@@ -20,6 +20,7 @@ from homeassistant.helpers.selector import (
 from homeassistant.util.location import distance
 
 from .const import (
+    CONF_FORECAST_POINT_TYPE,
     CONF_FORECAST_NAME,
     CONF_POLLEN_STATION_CODE,
     CONF_POLLEN_STATION_NAME,
@@ -61,6 +62,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize the config flow state."""
         self._pending_forecast_matches: list[Any] = []
         self._selected_forecast_point_id: str | None = None
+        self._selected_forecast_point_type: str | None = None
         self._selected_forecast_name: str | None = None
         self._last_forecast_query: str = ""
 
@@ -95,6 +97,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if user_input.get(CONF_FORECAST_POINT) == SEARCH_AGAIN_OPTION:
                 self._pending_forecast_matches = []
                 self._selected_forecast_point_id = None
+                self._selected_forecast_point_type = None
                 self._selected_forecast_name = None
                 return await self._show_forecast_search_form(
                     self._active_step_id(),
@@ -105,7 +108,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._pending_forecast_matches, user_input.get(CONF_FORECAST_POINT)
             )
             if selected_point is not None:
-                self._set_selected_forecast_point(selected_point.point_id, selected_point.display_name)
+                self._set_selected_forecast_point(
+                    selected_point.point_id,
+                    selected_point.point_type_id,
+                    selected_point.display_name,
+                )
                 return await self._show_details_form(self._active_step_id())
             errors[CONF_FORECAST_POINT] = "invalid_forecast_point"
 
@@ -273,12 +280,16 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         self._pending_forecast_matches = matches
         self._selected_forecast_point_id = None
+        self._selected_forecast_point_type = None
         self._selected_forecast_name = None
         return await self.async_step_forecast_pick()
 
-    def _set_selected_forecast_point(self, point_id: str, point_name: str) -> None:
+    def _set_selected_forecast_point(
+        self, point_id: str, point_type_id: str | None, point_name: str
+    ) -> None:
         """Cache the selected forecast point between steps."""
         self._selected_forecast_point_id = str(point_id).strip()
+        self._selected_forecast_point_type = point_type_id
         self._selected_forecast_name = point_name
 
     def _active_step_id(self) -> str:
@@ -348,14 +359,22 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         forecast_points = await self.hass.async_add_executor_job(load_forecast_point_list)
         weather_stations = await self.hass.async_add_executor_job(load_weather_station_list)
         pollen_stations = await self.hass.async_add_executor_job(load_pollen_station_list)
+        station_code = user_input.get(CONF_STATION_CODE)
+        pollen_station_code = user_input.get(CONF_POLLEN_STATION_CODE)
 
         forecast_point = find_forecast_point_by_id(
             forecast_points, resolved_data.get(CONF_POST_CODE)
         )
-        station = find_station_by_code(weather_stations, user_input.get(CONF_STATION_CODE))
-        pollen_station = find_station_by_code(
-            pollen_stations, user_input.get(CONF_POLLEN_STATION_CODE)
+        forecast_point_type = (
+            forecast_point.point_type_id
+            if forecast_point is not None
+            else self._selected_forecast_point_type
         )
+        station = find_station_by_code(weather_stations, station_code)
+        pollen_station = find_station_by_code(
+            pollen_stations, pollen_station_code
+        )
+        resolved_data[CONF_FORECAST_POINT_TYPE] = forecast_point_type
 
         resolved_data[CONF_FORECAST_NAME] = (
             forecast_name
