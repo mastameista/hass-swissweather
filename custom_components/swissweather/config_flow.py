@@ -49,7 +49,6 @@ _LOGGER = logging.getLogger(__name__)
 CONF_FORECAST_QUERY = "forecast_query"
 CONF_FORECAST_POINT = "forecast_point"
 SEARCH_AGAIN_OPTION = "__search_again__"
-NO_WEATHER_STATION_OPTION = "__no_weather_station__"
 NO_POLLEN_STATION_OPTION = "__no_pollen_station__"
 MAX_FORECAST_POINT_RESULTS = 50
 
@@ -213,8 +212,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         default_pollen_station_code = (user_input or {}).get(
             CONF_POLLEN_STATION_CODE, existing_data.get(CONF_POLLEN_STATION_CODE)
         )
-        if default_station_code is None:
-            default_station_code = NO_WEATHER_STATION_OPTION
         if default_pollen_station_code is None:
             default_pollen_station_code = NO_POLLEN_STATION_OPTION
         default_weather_warnings = (user_input or {}).get(
@@ -306,14 +303,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if self.hass.config.latitude is not None and self.hass.config.longitude is not None:
             stations = sorted(stations, key=lambda item: self._get_distance_to_station(item))
         return [
-            SelectOptionDict(
-                value=NO_WEATHER_STATION_OPTION,
-                label="No weather station (use limited forecast data)",
-            ),
-            *[
             SelectOptionDict(value=station.code, label=self.format_station_name_for_dropdown(station))
             for station in stations
-            ],
         ]
 
     async def _get_pollen_station_options(self) -> list[SelectOptionDict]:
@@ -368,8 +359,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         pollen_stations = await self.hass.async_add_executor_job(load_pollen_station_list)
 
         station_code = user_input.get(CONF_STATION_CODE)
-        if station_code == NO_WEATHER_STATION_OPTION:
-            station_code = None
         pollen_station_code = user_input.get(CONF_POLLEN_STATION_CODE)
         if pollen_station_code == NO_POLLEN_STATION_OPTION:
             pollen_station_code = None
