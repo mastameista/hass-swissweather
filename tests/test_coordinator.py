@@ -11,6 +11,8 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.swissweather.const import CONF_POST_CODE, CONF_STATION_CODE
 from custom_components.swissweather.coordinator import SwissWeatherDataCoordinator
+from custom_components.swissweather.meteo import MeteoSwissConnectionError
+from custom_components.swissweather.pollen import PollenDataError
 
 
 class FakeHass:
@@ -82,3 +84,54 @@ def test_weather_coordinator_uses_forecast_current_as_fallback(monkeypatch):
     assert result.current_weather is not None
     assert result.current_weather.airTemperature == (12.3, "C")
     assert result.warning_snapshot.count == 0
+
+
+def test_weather_coordinator_classifies_forecast_connection_errors(monkeypatch):
+    from custom_components.swissweather import coordinator as coordinator_module
+
+    class _FakeMeteoClient:
+        def __init__(self, session):
+            self.session = session
+
+        async def async_get_current_weather_for_station(self, station_code):
+            return None
+
+        async def async_get_forecast(self, post_code, forecast_point_type):
+            raise MeteoSwissConnectionError("timeout")
+
+    monkeypatch.setattr(
+        coordinator_module, "async_get_clientsession", lambda hass: object()
+    )
+    monkeypatch.setattr(coordinator_module, "MeteoClient", _FakeMeteoClient)
+
+    coordinator = SwissWeatherDataCoordinator(
+        FakeHass(),
+        SimpleNamespace(data={CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"}),
+    )
+
+    with pytest.raises(UpdateFailed, match="Could not reach MeteoSwiss forecast endpoint"):
+        asyncio.run(coordinator._async_update_data())
+
+
+def test_pollen_coordinator_classifies_invalid_payload(monkeypatch):
+    from custom_components.swissweather import coordinator as coordinator_module
+
+    class _FakePollenClient:
+        def __init__(self, session):
+            self.session = session
+
+        async def async_get_current_pollen_for_station(self, station_code):
+            raise PollenDataError("bad payload")
+
+    monkeypatch.setattr(
+        coordinator_module, "async_get_clientsession", lambda hass: object()
+    )
+    monkeypatch.setattr(coordinator_module, "PollenClient", _FakePollenClient)
+
+    coordinator = coordinator_module.SwissPollenDataCoordinator(
+        FakeHass(),
+        SimpleNamespace(data={"pollenStationCode": "BAS"}),
+    )
+
+    with pytest.raises(UpdateFailed, match="invalid pollen payload"):
+        asyncio.run(coordinator._async_update_data())

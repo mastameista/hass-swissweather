@@ -166,12 +166,12 @@ def test_meteo_client_returns_none_when_station_csv_unavailable():
         def get(self, *args, **kwargs):
             raise TimeoutError("boom")
 
-    assert (
+    with pytest.raises(meteo.MeteoSwissConnectionError):
         asyncio.run(
-            meteo.MeteoClient(_BrokenSession()).async_get_current_weather_for_all_stations()
+            meteo.MeteoClient(
+                _BrokenSession()
+            ).async_get_current_weather_for_all_stations()
         )
-        is None
-    )
 
 
 def test_pollen_client_returns_none_on_json_failure():
@@ -194,13 +194,12 @@ def test_pollen_client_returns_none_on_json_failure():
         def get(self, *args, **kwargs):
             return _BrokenResponse()
 
-    value, timestamp = asyncio.run(
-        pollen.PollenClient(_Session()).async_get_current_pollen_for_station_type(
-            "BAS", "birke"
+    with pytest.raises(pollen.PollenDataError):
+        asyncio.run(
+            pollen.PollenClient(_Session()).async_get_current_pollen_for_station_type(
+                "BAS", "birke"
+            )
         )
-    )
-    assert value is None
-    assert timestamp is None
 
 
 def test_config_flow_caches_metadata_per_flow_instance(monkeypatch):

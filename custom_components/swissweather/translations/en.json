@@ -151,11 +151,20 @@
       "oak_level": {
         "name": "Pollen oak level"
       }
+    }
+  },
+  "issues": {
+    "missing_forecast_point": {
+      "title": "The stored forecast place for {entry_title} is no longer available",
+      "description": "The saved forecast place ID `{post_code}` can no longer be found in the latest MeteoSwiss forecast metadata. Reconfigure the Swiss Weather entry to pick a new forecast place."
     },
-    "weather": {
-      "forecast": {
-        "name": "Forecast"
-      }
+    "missing_weather_station": {
+      "title": "The stored weather station for {entry_title} is no longer available",
+      "description": "The saved weather station code `{station_code}` can no longer be found in the latest MeteoSwiss station metadata. Reconfigure the Swiss Weather entry to pick a new weather station or remove it."
+    },
+    "missing_pollen_station": {
+      "title": "The stored pollen station for {entry_title} is no longer available",
+      "description": "The saved pollen station code `{station_code}` can no longer be found in the latest MeteoSwiss pollen metadata. Reconfigure the Swiss Weather entry to pick a new pollen station or disable pollen for this entry."
     }
   }
 }

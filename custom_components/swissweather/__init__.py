@@ -9,7 +9,12 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import (
+    device_registry as dr,
+    entity_registry as er,
+    issue_registry as ir,
+)
+from homeassistant.helpers.issue_registry import IssueSeverity
 
 from .const import (
     CONF_FORECAST_POINT_TYPE,
@@ -24,13 +29,18 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import SwissPollenDataCoordinator, SwissWeatherDataCoordinator
-from .forecast_points import async_load_forecast_point_list, find_forecast_point_by_id
+from .forecast_points import (
+    ForecastPoint,
+    async_load_forecast_point_list,
+    find_forecast_point_by_id,
+)
 from .naming import (
     build_entry_title,
     build_entry_unique_id,
     format_station_display_name,
 )
 from .station_lookup import (
+    WeatherStation,
     async_load_pollen_station_list,
     async_load_weather_station_list,
     find_station_by_code,
@@ -63,6 +73,10 @@ _WARNING_ENTITY_SUFFIXES = (
     "secondary_warning",
     "tertiary_warning",
 )
+ISSUE_ID_MISSING_FORECAST_POINT = "missing_forecast_point"
+ISSUE_ID_MISSING_WEATHER_STATION = "missing_weather_station"
+ISSUE_ID_MISSING_POLLEN_STATION = "missing_pollen_station"
+REPAIRS_LEARN_MORE_URL = "https://github.com/mastameista/hass-swissweather"
 
 
 @dataclass
@@ -71,6 +85,15 @@ class SwissWeatherRuntimeData:
 
     weather_coordinator: SwissWeatherDataCoordinator
     pollen_coordinator: SwissPollenDataCoordinator
+
+
+@dataclass
+class SwissWeatherMetadata:
+    """Cached metadata used during setup-time enrichment and validation."""
+
+    forecast_points: list[ForecastPoint]
+    weather_stations: list[WeatherStation]
+    pollen_stations: list[WeatherStation]
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -228,11 +251,116 @@ async def _async_ensure_entry_unique_id(
     return entry
 
 
+async def _async_load_metadata(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> SwissWeatherMetadata:
+    """Load setup-time metadata once for this entry."""
+    session = async_get_clientsession(hass)
+    forecast_points = await async_load_forecast_point_list(session)
+
+    weather_stations: list[WeatherStation] = []
+    if entry.data.get(CONF_STATION_CODE):
+        weather_stations = await async_load_weather_station_list(session)
+
+    pollen_stations: list[WeatherStation] = []
+    if entry.data.get(CONF_POLLEN_STATION_CODE):
+        pollen_stations = await async_load_pollen_station_list(PollenClient(session))
+
+    return SwissWeatherMetadata(
+        forecast_points=forecast_points,
+        weather_stations=weather_stations,
+        pollen_stations=pollen_stations,
+    )
+
+
+def _entry_issue_id(entry: ConfigEntry, issue_key: str) -> str:
+    """Build a stable issue ID scoped to a config entry."""
+    return f"{issue_key}_{entry.entry_id}"
+
+
+def _async_update_metadata_issue(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    issue_key: str,
+    *,
+    active: bool,
+    translation_key: str,
+    translation_placeholders: dict[str, str],
+) -> None:
+    """Create or clear a metadata repair issue for an entry."""
+    issue_id = _entry_issue_id(entry, issue_key)
+    if active:
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            issue_id,
+            is_fixable=False,
+            is_persistent=False,
+            learn_more_url=REPAIRS_LEARN_MORE_URL,
+            severity=IssueSeverity.WARNING,
+            translation_key=translation_key,
+            translation_placeholders=translation_placeholders,
+        )
+        return
+    ir.async_delete_issue(hass, DOMAIN, issue_id)
+
+
+def _async_sync_repairs_issues(
+    hass: HomeAssistant, entry: ConfigEntry, metadata: SwissWeatherMetadata
+) -> None:
+    """Create repairs issues for stale stored metadata references."""
+    post_code = str(entry.data.get(CONF_POST_CODE, "")).strip()
+    station_code = str(entry.data.get(CONF_STATION_CODE, "")).strip()
+    pollen_station_code = str(entry.data.get(CONF_POLLEN_STATION_CODE, "")).strip()
+
+    forecast_missing = bool(
+        post_code and metadata.forecast_points and find_forecast_point_by_id(metadata.forecast_points, post_code) is None
+    )
+    _async_update_metadata_issue(
+        hass,
+        entry,
+        ISSUE_ID_MISSING_FORECAST_POINT,
+        active=forecast_missing,
+        translation_key=ISSUE_ID_MISSING_FORECAST_POINT,
+        translation_placeholders={"post_code": post_code, "entry_title": entry.title},
+    )
+
+    weather_missing = bool(
+        station_code
+        and metadata.weather_stations
+        and find_station_by_code(metadata.weather_stations, station_code) is None
+    )
+    _async_update_metadata_issue(
+        hass,
+        entry,
+        ISSUE_ID_MISSING_WEATHER_STATION,
+        active=weather_missing,
+        translation_key=ISSUE_ID_MISSING_WEATHER_STATION,
+        translation_placeholders={"station_code": station_code, "entry_title": entry.title},
+    )
+
+    pollen_missing = bool(
+        pollen_station_code
+        and metadata.pollen_stations
+        and find_station_by_code(metadata.pollen_stations, pollen_station_code) is None
+    )
+    _async_update_metadata_issue(
+        hass,
+        entry,
+        ISSUE_ID_MISSING_POLLEN_STATION,
+        active=pollen_missing,
+        translation_key=ISSUE_ID_MISSING_POLLEN_STATION,
+        translation_placeholders={"station_code": pollen_station_code, "entry_title": entry.title},
+    )
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Swiss Weather from a config entry."""
     entry = await _async_migrate_warning_config(hass, entry)
     entry = await _async_ensure_entry_unique_id(hass, entry)
-    entry = await _async_ensure_entry_names(hass, entry)
+    metadata = await _async_load_metadata(hass, entry)
+    entry = await _async_ensure_entry_names(hass, entry, metadata)
+    _async_sync_repairs_issues(hass, entry, metadata)
     await _async_cleanup_optional_devices(hass, entry)
     await _async_cleanup_legacy_warning_entities(hass, entry)
     await _async_cleanup_disabled_warning_entities(hass, entry)
@@ -269,33 +397,37 @@ async def async_remove_config_entry_device(
     return len(device_entities) == 0
 
 
-async def _async_ensure_entry_names(hass: HomeAssistant, entry: ConfigEntry) -> ConfigEntry:
+async def _async_ensure_entry_names(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    metadata: SwissWeatherMetadata | None = None,
+) -> ConfigEntry:
     """Populate cached display names in older config entries and keep the title in sync."""
     data_updates = {}
-    session = async_get_clientsession(hass)
+    if metadata is None:
+        metadata = await _async_load_metadata(hass, entry)
 
     forecast_name = entry.data.get(CONF_FORECAST_NAME)
     post_code = str(entry.data.get(CONF_POST_CODE, "")).strip()
     forecast_point_type = entry.data.get(CONF_FORECAST_POINT_TYPE)
     if not forecast_name or forecast_name == post_code:
-        forecast_points = await async_load_forecast_point_list(session)
-        forecast_point = find_forecast_point_by_id(forecast_points, post_code)
+        forecast_point = find_forecast_point_by_id(metadata.forecast_points, post_code)
         forecast_name = (
             forecast_point.display_name if forecast_point is not None else post_code
         )
         if forecast_point is not None and forecast_point_type != forecast_point.point_type_id:
             data_updates[CONF_FORECAST_POINT_TYPE] = forecast_point.point_type_id
     elif forecast_point_type is None:
-        forecast_points = await async_load_forecast_point_list(session)
-        forecast_point = find_forecast_point_by_id(forecast_points, post_code)
+        forecast_point = find_forecast_point_by_id(metadata.forecast_points, post_code)
         if forecast_point is not None:
             data_updates[CONF_FORECAST_POINT_TYPE] = forecast_point.point_type_id
     if forecast_name and entry.data.get(CONF_FORECAST_NAME) != forecast_name:
         data_updates[CONF_FORECAST_NAME] = forecast_name
 
     if entry.data.get(CONF_STATION_CODE) and not entry.data.get(CONF_STATION_NAME):
-        weather_stations = await async_load_weather_station_list(session)
-        station = find_station_by_code(weather_stations, entry.data.get(CONF_STATION_CODE))
+        station = find_station_by_code(
+            metadata.weather_stations, entry.data.get(CONF_STATION_CODE)
+        )
         if station is not None:
             station_name, station_canton = split_place_and_canton(station.name)
             data_updates[CONF_STATION_NAME] = format_station_display_name(
@@ -305,9 +437,8 @@ async def _async_ensure_entry_names(hass: HomeAssistant, entry: ConfigEntry) -> 
     if entry.data.get(CONF_POLLEN_STATION_CODE) and not entry.data.get(
         CONF_POLLEN_STATION_NAME
     ):
-        pollen_stations = await async_load_pollen_station_list(PollenClient(session))
         station = find_station_by_code(
-            pollen_stations, entry.data.get(CONF_POLLEN_STATION_CODE)
+            metadata.pollen_stations, entry.data.get(CONF_POLLEN_STATION_CODE)
         )
         if station is not None:
             data_updates[CONF_POLLEN_STATION_NAME] = format_station_display_name(

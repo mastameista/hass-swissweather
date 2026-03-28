@@ -45,6 +45,18 @@ ICON_TO_CONDITION_MAP: dict[int, str] = {
 }
 
 
+class MeteoSwissClientError(Exception):
+    """Base error for MeteoSwiss client failures."""
+
+
+class MeteoSwissConnectionError(MeteoSwissClientError):
+    """Raised when MeteoSwiss cannot be reached."""
+
+
+class MeteoSwissDataError(MeteoSwissClientError):
+    """Raised when MeteoSwiss returns invalid data."""
+
+
 def to_float(string: str) -> float | None:
     """Convert a MeteoSwiss number string to float."""
     if string is None or string == "-":
@@ -600,9 +612,14 @@ class MeteoClient:
                 response.raise_for_status()
                 text = await response.text(encoding=encoding)
                 return list(csv.DictReader(text.splitlines(), delimiter=";"))
-        except (ClientError, TimeoutError, UnicodeDecodeError, csv.Error):
-            logger.error("Connection failure.", exc_info=True)
-            return None
+        except (ClientError, TimeoutError) as err:
+            raise MeteoSwissConnectionError(
+                f"Failed to fetch MeteoSwiss CSV from {url}"
+            ) from err
+        except (UnicodeDecodeError, csv.Error) as err:
+            raise MeteoSwissDataError(
+                f"Invalid MeteoSwiss CSV payload from {url}"
+            ) from err
 
     def _build_forecast_query_value(
         self, postCode, forecastPointType: str | None = None
@@ -634,6 +651,11 @@ class MeteoClient:
             ) as response:
                 response.raise_for_status()
                 return await response.json()
-        except (ClientError, TimeoutError, ValueError):
-            logger.error("Connection failure.", exc_info=True)
-            return None
+        except (ClientError, TimeoutError) as err:
+            raise MeteoSwissConnectionError(
+                f"Failed to fetch MeteoSwiss forecast from {url}"
+            ) from err
+        except ValueError as err:
+            raise MeteoSwissDataError(
+                f"Invalid MeteoSwiss forecast payload from {url}"
+            ) from err

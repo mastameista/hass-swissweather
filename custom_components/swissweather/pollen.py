@@ -15,6 +15,18 @@ POLLEN_STATIONS_URL = "https://data.geo.admin.ch/ch.meteoschweiz.ogd-pollen/ogd-
 POLLEN_DATA_URL = "https://www.meteoschweiz.admin.ch/product/output/measured-values/stationsTable/messwerte-pollen-{}-1h/stationsTable.messwerte-pollen-{}-1h.en.json"
 
 
+class PollenClientError(Exception):
+    """Base error for pollen client failures."""
+
+
+class PollenConnectionError(PollenClientError):
+    """Raised when pollen endpoints cannot be reached."""
+
+
+class PollenDataError(PollenClientError):
+    """Raised when pollen payloads are invalid."""
+
+
 class PollenLevel(StrEnum):
     """Marks pollen level."""
 
@@ -154,9 +166,14 @@ class PollenClient:
                 "Couldn't find %s in dataset for %s!", station_abbrev, pollen_key
             )
             return (None, None)
-        except (ClientError, TimeoutError, ValueError):
-            logger.error("Connection failure.", exc_info=True)
-            return (None, None)
+        except (ClientError, TimeoutError) as err:
+            raise PollenConnectionError(
+                f"Failed to fetch MeteoSwiss pollen data from {url}"
+            ) from err
+        except ValueError as err:
+            raise PollenDataError(
+                f"Invalid MeteoSwiss pollen payload from {url}"
+            ) from err
 
     async def _async_get_csv_dictionary_for_url(self, url, encoding="utf-8"):
         try:
@@ -165,6 +182,11 @@ class PollenClient:
                 response.raise_for_status()
                 text = await response.text(encoding=encoding)
                 return list(csv.DictReader(text.splitlines(), delimiter=";"))
-        except (ClientError, TimeoutError, UnicodeDecodeError, csv.Error):
-            logger.error("Connection failure.", exc_info=True)
-            return None
+        except (ClientError, TimeoutError) as err:
+            raise PollenConnectionError(
+                f"Failed to fetch MeteoSwiss pollen CSV from {url}"
+            ) from err
+        except (UnicodeDecodeError, csv.Error) as err:
+            raise PollenDataError(
+                f"Invalid MeteoSwiss pollen CSV payload from {url}"
+            ) from err

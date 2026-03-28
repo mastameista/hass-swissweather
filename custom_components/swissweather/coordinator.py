@@ -19,8 +19,21 @@ from .const import (
     CONF_STATION_CODE,
     DOMAIN,
 )
-from .meteo import CurrentWeather, MeteoClient, Warning, WarningLevel, WeatherForecast
-from .pollen import CurrentPollen, PollenClient
+from .meteo import (
+    CurrentWeather,
+    MeteoClient,
+    MeteoSwissConnectionError,
+    MeteoSwissDataError,
+    Warning,
+    WarningLevel,
+    WeatherForecast,
+)
+from .pollen import (
+    CurrentPollen,
+    PollenClient,
+    PollenConnectionError,
+    PollenDataError,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -117,6 +130,13 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
                     self._station_code
                 )
                 _LOGGER.debug("Current state: %s", current_state)
+            except (MeteoSwissConnectionError, MeteoSwissDataError) as err:
+                _LOGGER.warning(
+                    "Failed to load current weather state for %s: %s",
+                    self._station_code,
+                    err,
+                )
+                current_state = None
             except Exception as err:
                 _LOGGER.warning(
                     "Failed to load current weather state for %s",
@@ -158,6 +178,14 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
             snapshot = build_warning_snapshot(
                 None if current_forecast is None else current_forecast.warnings
             )
+        except MeteoSwissConnectionError as err:
+            raise UpdateFailed(
+                f"Could not reach MeteoSwiss forecast endpoint: {err}"
+            ) from err
+        except MeteoSwissDataError as err:
+            raise UpdateFailed(
+                f"MeteoSwiss returned an invalid forecast payload: {err}"
+            ) from err
         except UpdateFailed:
             raise
         except Exception as err:
@@ -198,6 +226,14 @@ class SwissPollenDataCoordinator(DataUpdateCoordinator[CurrentPollen | None]):
                     self._pollen_station_code,
                 )
                 _LOGGER.debug("Current pollen: %s", current_state)
+            except PollenConnectionError as err:
+                raise UpdateFailed(
+                    f"Could not reach MeteoSwiss pollen endpoint: {err}"
+                ) from err
+            except PollenDataError as err:
+                raise UpdateFailed(
+                    f"MeteoSwiss returned an invalid pollen payload: {err}"
+                ) from err
             except Exception as err:
                 raise UpdateFailed(f"Update failed: {err}") from err
         return current_state

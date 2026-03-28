@@ -43,8 +43,7 @@ async def async_setup_entry(
     )
 
 class SwissWeather(CoordinatorEntity[SwissWeatherDataCoordinator], WeatherEntity):
-    _attr_has_entity_name = True
-    _attr_translation_key = "forecast"
+    _attr_has_entity_name = False
 
     @staticmethod
     def value_or_none(value: FloatValue | None) -> float | None:
@@ -65,6 +64,7 @@ class SwissWeather(CoordinatorEntity[SwissWeatherDataCoordinator], WeatherEntity
             identifiers={(DOMAIN, f"{config_entry.entry_id}-forecast")},
         )
         self._postCode = config_entry.data[CONF_POST_CODE]
+        self._attr_name = forecast_name
         self._attr_suggested_object_id = german_slug(forecast_name)
         self._attr_attribution = "Source: MeteoSwiss"
 
