@@ -74,3 +74,8 @@ def build_entry_title(
     if not parts:
         return "MeteoSwiss"
     return "MeteoSwiss " + " / ".join(parts)
+
+
+def build_entry_unique_id(post_code: str | None) -> str:
+    """Build a stable config entry unique ID for a forecast point."""
+    return f"forecast:{str(post_code or '').strip()}"

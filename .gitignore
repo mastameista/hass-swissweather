@@ -122,11 +122,19 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.venv312/
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Local Codex / dev artifacts
+codex-skills/
+warning-redesign-deploy.tar
+_*.tar
+_tmp_*.py
+pytest-cache-files-*/
 
 # Spyder project settings
 .spyderproject

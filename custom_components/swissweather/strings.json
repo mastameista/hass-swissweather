@@ -22,17 +22,16 @@
           "forecast_point": "Matching forecast places"
         }
       },
-      "details": {
-        "title": "Stations",
-        "description": "Review the forecast display name and choose the weather and pollen stations.",
-        "data": {
-          "forecastName": "Forecast display name",
-          "stationCode": "Weather station for current weather state",
-          "pollenStationCode": "Pollen measuring station",
-          "weatherWarningsNumber": "Number of weather warnings to show as separate entities (default: 1)"
+        "details": {
+          "title": "Stations",
+          "description": "Choose the weather and pollen stations.",
+          "data": {
+            "stationCode": "Weather station for current weather state",
+            "pollenStationCode": "Pollen measuring station",
+            "warningsEnabled": "Create weather warning entities"
+          }
         }
-      }
-    },
+      },
     "error": {
       "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
       "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",

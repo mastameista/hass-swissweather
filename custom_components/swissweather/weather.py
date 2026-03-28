@@ -18,7 +18,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import SwissWeatherDataCoordinator, get_weather_coordinator_key
+from . import SwissWeatherDataCoordinator
 from .const import CONF_FORECAST_NAME, CONF_POST_CODE, DOMAIN
 from .meteo import (
     CurrentWeather,
@@ -35,7 +35,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    coordinator: SwissWeatherDataCoordinator = hass.data[DOMAIN][get_weather_coordinator_key(config_entry)]
+    coordinator: SwissWeatherDataCoordinator = config_entry.runtime_data.weather_coordinator
     async_add_entities(
         [
             SwissWeather(coordinator, config_entry.data.get(CONF_FORECAST_NAME, config_entry.data[CONF_POST_CODE]), config_entry),
@@ -72,13 +72,13 @@ class SwissWeather(CoordinatorEntity[SwissWeatherDataCoordinator], WeatherEntity
     def _current_state(self) -> CurrentWeather | None:
         if self.coordinator.data is None:
             return None
-        return self.coordinator.data[0]
+        return self.coordinator.data.current_weather
 
     @property
     def _current_forecast(self) -> WeatherForecast | None:
-        if self.coordinator.data is None or len(self.coordinator.data) < 2:
+        if self.coordinator.data is None:
             return None
-        return self.coordinator.data[1]
+        return self.coordinator.data.forecast
 
     @property
     def unique_id(self) -> str | None:

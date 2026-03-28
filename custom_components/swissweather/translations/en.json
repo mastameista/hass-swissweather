@@ -36,12 +36,11 @@
       },
       "details": {
         "title": "Stations",
-        "description": "Review the forecast display name and choose the weather and pollen stations.",
+        "description": "Choose the weather and pollen stations.",
         "data": {
-          "forecastName": "Forecast display name",
           "stationCode": "Weather station for current weather state",
           "pollenStationCode": "Pollen measuring station",
-          "weatherWarningsNumber": "Number of weather warnings to show as separate entities (default: 1)"
+          "warningsEnabled": "Create weather warning entities"
         }
       }
     }

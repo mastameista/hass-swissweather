@@ -30,33 +30,60 @@ Add Swiss Weather integration to Home Assistant. You'll be asked for a few piece
 * **Post Code**: The post code of your location, used for forecast and weather alerts - e.g. 8001 for Zurich.
 * **Station code**: The station code of weather station measuring live data near you. Choose the closest station within reason - e.g. it probably doesn't make sense to select "Uetliberg" to get data in Zurich due to altitude difference. Choose Kloten on Fluntern instead. If not set, limited data will be pulled from the forecast.
 * **Pollen station code**: The station code of pollen measurement station for pollen data. Same rules apply as before.
-* **Number of weather warning entities**: This sets the number of separate entities created for weather warnings. By default is one - entities are created only for the most severe weather warning. You can increase this to create separate entities for 2nd most severe, 3rd, etc.
+* **Create weather warning entities**: Enables warning entities for the selected forecast place. When enabled, the integration creates `has_warnings`, `warning_count`, `highest_warning_level`, and three prioritized warning slots: `primary`, `secondary`, and `tertiary`.
 
 ### Example Weather Alert mushroom card
 
-Data for weather alert needs to be pulled out of a card. Example mushroom template card which shows most severe weather alert and a badge for more:
+Example mushroom cards that show the primary warning first and only reveal secondary / tertiary slots when they currently exist:
 
 ```yaml
 type: custom:mushroom-template-card
 icon: mdi:alert
-primary: " {{states('sensor.most_severe_weather_warning_at_8000') }} - {{states('sensor.most_severe_weather_warning_level_at_8000')}}"
-secondary: "{{state_attr('sensor.most_severe_weather_warning_at_8000', 'text')}}"
+primary: >
+  {{ states('sensor.primary_weather_warning_8000') | replace('_', ' ') | title }}
+secondary: "{{ state_attr('sensor.primary_weather_warning_8000', 'text') }}"
 icon_color: >
-  {{ state_attr('sensor.most_severe_weather_warning_level_at_8000','icon_color') }}
+  {{ state_attr('sensor.primary_weather_warning_8000', 'icon_color') }}
 badge_color: red
 badge_icon: |
-  {% set number_of_warnings=states("sensor.weather_warnings_at_8000") |int %}
+  {% set number_of_warnings = states('sensor.weather_warning_count_8000') | int %}
   {% if number_of_warnings > 9 %}
     mdi:numeric-9-plus
   {% elif number_of_warnings > 1 and number_of_warnings < 10 %}
-    mdi:numeric-{{number_of_warnings}}
+    mdi:numeric-{{ number_of_warnings }}
   {% endif %}
 multiline_secondary: true
 tap_action:
   action: more-info
-  entity: sensor.most_severe_weather_warning_at_8000
+  entity: sensor.primary_weather_warning_8000
 visibility:
-  - condition: state
-    entity: sensor.most_severe_weather_warning_at_8000
-    state_not: unavailable 
+  - condition: state_not
+    entity: sensor.primary_weather_warning_8000
+    state: "unknown"
+---
+type: custom:mushroom-template-card
+icon: mdi:alert-outline
+primary: >
+  {{ states('sensor.secondary_weather_warning_8000') | replace('_', ' ') | title }}
+secondary: "{{ state_attr('sensor.secondary_weather_warning_8000', 'text') }}"
+icon_color: >
+  {{ state_attr('sensor.secondary_weather_warning_8000', 'icon_color') }}
+multiline_secondary: true
+visibility:
+  - condition: state_not
+    entity: sensor.secondary_weather_warning_8000
+    state: "unknown"
+---
+type: custom:mushroom-template-card
+icon: mdi:alert-outline
+primary: >
+  {{ states('sensor.tertiary_weather_warning_8000') | replace('_', ' ') | title }}
+secondary: "{{ state_attr('sensor.tertiary_weather_warning_8000', 'text') }}"
+icon_color: >
+  {{ state_attr('sensor.tertiary_weather_warning_8000', 'icon_color') }}
+multiline_secondary: true
+visibility:
+  - condition: state_not
+    entity: sensor.tertiary_weather_warning_8000
+    state: "unknown"
 ```
