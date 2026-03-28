@@ -1,6 +1,9 @@
 """Coordinates updates for weather data."""
 
+from __future__ import annotations
+
 import datetime
+from dataclasses import dataclass
 from datetime import UTC, timedelta
 import logging
 
@@ -15,15 +18,78 @@ from .const import (
     CONF_STATION_CODE,
     DOMAIN,
 )
-from .meteo import CurrentWeather, MeteoClient, Warning, WeatherForecast
+from .meteo import CurrentWeather, MeteoClient, Warning, WarningLevel, WeatherForecast
 from .pollen import CurrentPollen, PollenClient
 
 _LOGGER = logging.getLogger(__name__)
 
-class SwissWeatherDataCoordinator(DataUpdateCoordinator[tuple[CurrentWeather | None, WeatherForecast | None]]):
-    """Coordinates data loads for all sensors."""
 
-    _client : MeteoClient
+@dataclass
+class WarningSnapshot:
+    """Prepared warning view for all warning-related entities."""
+
+    all_warnings: list[Warning]
+    active_warnings: list[Warning]
+    sorted_warnings: list[Warning]
+    primary: Warning | None
+    secondary: Warning | None
+    tertiary: Warning | None
+    count: int
+    highest_level: int | None
+
+
+@dataclass
+class WeatherData:
+    """Combined weather data shared by sensor and weather entities."""
+
+    current_weather: CurrentWeather | None
+    forecast: WeatherForecast | None
+    warning_snapshot: WarningSnapshot
+
+
+def build_warning_snapshot(
+    warnings: list[Warning] | None,
+    now: datetime.datetime | None = None,
+) -> WarningSnapshot:
+    """Build a stable presentation snapshot from MeteoSwiss warnings."""
+    now = now or datetime.datetime.now(UTC)
+    all_warnings = list(warnings or [])
+    active_warnings = [warning for warning in all_warnings if warning.is_active(now)]
+    display_warnings = [warning for warning in all_warnings if not warning.is_expired(now)]
+
+    sorted_warnings = sorted(
+        display_warnings,
+        key=lambda warning: (
+            -warning.effective_level,
+            0 if warning.is_active(now) else 1,
+            0 if not warning.outlook else 1,
+            warning.validFrom or datetime.datetime.max.replace(tzinfo=UTC),
+            warning.ordering or "",
+            warning.fingerprint,
+        ),
+    )
+
+    highest_level = (
+        max((warning.effective_level for warning in sorted_warnings), default=None)
+        if sorted_warnings
+        else None
+    )
+    return WarningSnapshot(
+        all_warnings=all_warnings,
+        active_warnings=active_warnings,
+        sorted_warnings=sorted_warnings,
+        primary=sorted_warnings[0] if len(sorted_warnings) > 0 else None,
+        secondary=sorted_warnings[1] if len(sorted_warnings) > 1 else None,
+        tertiary=sorted_warnings[2] if len(sorted_warnings) > 2 else None,
+        count=len(sorted_warnings),
+        highest_level=highest_level,
+    )
+
+
+class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
+    """Coordinates data loads for all weather entities."""
+
+    _client: MeteoClient
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
         self._station_code = config_entry.data.get(CONF_STATION_CODE)
@@ -40,18 +106,19 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[tuple[CurrentWeather | N
             config_entry=config_entry,
         )
 
-    async def _async_update_data(self) -> tuple[CurrentWeather | None, WeatherForecast | None]:
+    async def _async_update_data(self) -> WeatherData:
+        current_state: CurrentWeather | None = None
         if self._station_code is None:
             _LOGGER.warning("Station code not set, not loading current state.")
-            current_state = None
         else:
             _LOGGER.info("Loading current weather state for %s", self._station_code)
             try:
                 current_state = await self.hass.async_add_executor_job(
-                    self._client.get_current_weather_for_station, self._station_code)
+                    self._client.get_current_weather_for_station, self._station_code
+                )
                 _LOGGER.debug("Current state: %s", current_state)
-            except Exception as e:
-                _LOGGER.exception(e)
+            except Exception as err:
+                _LOGGER.exception(err)
                 current_state = None
 
         try:
@@ -62,28 +129,37 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[tuple[CurrentWeather | N
                 self._forecast_point_type,
             )
             _LOGGER.debug("Current forecast: %s", current_forecast)
-            if current_state is None:
-                current = None
-                if current_forecast is not None:
-                    current = current_forecast.current
+            if current_state is None and current_forecast is not None:
+                current = current_forecast.current
                 if current is not None:
-                    current_state = CurrentWeather(None, datetime.datetime.now(tz=datetime.UTC), current.currentTemperature, None, None, None, None, None, None, None, None, None, None, None)
-            if current_forecast is not None and current_forecast.warnings is not None:
-                # Remove all warnings that have expired and sort them via severity.
-                current_forecast.warnings = self._sort_filter_weather_alerts(current_forecast.warnings)
-        except Exception as e:
-            _LOGGER.exception(e)
-            raise UpdateFailed(f"Update failed: {e}") from e
-        return (current_state, current_forecast)
+                    current_state = CurrentWeather(
+                        None,
+                        datetime.datetime.now(tz=datetime.UTC),
+                        current.currentTemperature,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                    )
+            snapshot = build_warning_snapshot(
+                None if current_forecast is None else current_forecast.warnings
+            )
+        except Exception as err:
+            _LOGGER.exception(err)
+            raise UpdateFailed(f"Update failed: {err}") from err
 
-    def _sort_filter_weather_alerts(self, warnings:list[Warning]) -> list[Warning]:
-        in_count = len(warnings)
-        now = datetime.datetime.now(UTC)
-        valid_warnings = [warning for warning in warnings
-                          if (warning.validTo is None or warning.validTo >= now)]
-        valid_warnings = sorted(valid_warnings, key=lambda warning: warning.warningLevel, reverse=True)
-        _LOGGER.info("Weather warnings - in: %d filtered: %d", in_count, len(valid_warnings))
-        return valid_warnings
+        return WeatherData(
+            current_weather=current_state,
+            forecast=current_forecast,
+            warning_snapshot=snapshot,
+        )
 
 
 class SwissPollenDataCoordinator(DataUpdateCoordinator[CurrentPollen | None]):
@@ -112,9 +188,11 @@ class SwissPollenDataCoordinator(DataUpdateCoordinator[CurrentPollen | None]):
             _LOGGER.info("Loading current pollen state for %s", self._pollen_station_code)
             try:
                 current_state = await self.hass.async_add_executor_job(
-                    self._client.get_current_pollen_for_station, self._pollen_station_code)
+                    self._client.get_current_pollen_for_station,
+                    self._pollen_station_code,
+                )
                 _LOGGER.debug("Current pollen: %s", current_state)
-            except Exception as e:
-                _LOGGER.exception(e)
-                raise UpdateFailed(f"Update failed: {e}") from e
+            except Exception as err:
+                _LOGGER.exception(err)
+                raise UpdateFailed(f"Update failed: {err}") from err
         return current_state

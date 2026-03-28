@@ -18,6 +18,7 @@ from .const import (
     CONF_POST_CODE,
     CONF_STATION_CODE,
     CONF_STATION_NAME,
+    CONF_WARNINGS_ENABLED,
     CONF_WEATHER_WARNINGS_NUMBER,
     DOMAIN,
 )
@@ -37,8 +38,20 @@ from .station_lookup import (
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.WEATHER]
-_WARNING_INDEX_RE = re.compile(r"^(?P<post_code>.+)\.warning(?:\.level)?\.(?P<index>\d+)$")
+PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR, Platform.WEATHER]
+_LEGACY_WARNING_INDEX_RE = re.compile(
+    r"^(?P<post_code>.+)\.warning(?:\.level)?\.(?P<index>\d+)$"
+)
+_LEGACY_WARNING_SUMMARY_RE = re.compile(r"^(?P<post_code>.+)\.warnings$")
+_LEGACY_WARNING_ENTITY_RE = re.compile(
+    r"^(?:binary_sensor|sensor)\.(?:"
+    r".*_most_severe_weather_warning(?:_level)?|"
+    r"most_severe_weather_warning(?:_level)?_at_\d+|"
+    r".*_weather_warning_\d+(?:_level)?|"
+    r".*_weather_warnings|"
+    r"weather_warnings_at_\d+"
+    r")$"
+)
 _WEATHER_SENSOR_UNIQUE_ID_SUFFIXES = (
     "time",
     "temperature",
@@ -54,9 +67,19 @@ _WEATHER_SENSOR_UNIQUE_ID_SUFFIXES = (
     "pressure_qff",
     "pressure_qnh",
 )
+_WARNING_ENTITY_SUFFIXES = (
+    "has_warnings",
+    "warning_count",
+    "highest_warning_level",
+    "primary_warning",
+    "secondary_warning",
+    "tertiary_warning",
+)
+
 
 def get_weather_coordinator_key(entry: ConfigEntry):
     return entry.entry_id + "-weather-coordinator"
+
 
 def get_pollen_coordinator_key(entry: ConfigEntry):
     return entry.entry_id + "-pollen-coordinator"
@@ -159,7 +182,9 @@ async def _async_cleanup_unconfigured_weather_entities(
     }
     removed_count = 0
 
-    for entity_entry in list(er.async_entries_for_config_entry(entity_registry, entry.entry_id)):
+    for entity_entry in list(
+        er.async_entries_for_config_entry(entity_registry, entry.entry_id)
+    ):
         if entity_entry.unique_id not in expected_unique_ids:
             continue
         entity_registry.async_remove(entity_entry.entity_id)
@@ -182,34 +207,94 @@ async def _async_cleanup_optional_devices(
         await _async_remove_entry_device(hass, entry, "pollen-station")
 
 
-async def _async_cleanup_warning_entities(
+async def _async_cleanup_legacy_warning_entities(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> None:
-    """Remove stale warning entities when the configured count decreases."""
+    """Remove warning entities from the legacy numbered warning model."""
     entity_registry = er.async_get(hass)
-    configured_warning_count = int(
-        entry.data.get(CONF_WEATHER_WARNINGS_NUMBER, 1) or 0
-    )
-
-    for entity_entry in er.async_entries_for_config_entry(
-        entity_registry, entry.entry_id
-    ):
-        unique_id = entity_entry.unique_id or ""
-        match = _WARNING_INDEX_RE.match(unique_id)
-        if match is not None:
-            if int(match.group("index")) >= configured_warning_count:
-                entity_registry.async_remove(entity_entry.entity_id)
+    removed_count = 0
+    for entity_entry in list(entity_registry.entities.values()):
+        if entity_entry.platform != DOMAIN:
             continue
-        if configured_warning_count < 1 and unique_id.endswith(".warnings"):
+        if entity_entry.config_entry_id != entry.entry_id:
+            continue
+        unique_id = entity_entry.unique_id or ""
+        entity_id = entity_entry.entity_id or ""
+        if entity_id.endswith("_has_weather_warnings"):
+            continue
+        if (
+            _LEGACY_WARNING_INDEX_RE.match(unique_id)
+            or _LEGACY_WARNING_SUMMARY_RE.match(unique_id)
+            or _LEGACY_WARNING_ENTITY_RE.match(entity_id)
+        ):
             entity_registry.async_remove(entity_entry.entity_id)
+            removed_count += 1
+
+    if removed_count:
+        _LOGGER.info("Removed %d legacy swissweather warning entities", removed_count)
+
+
+async def _async_cleanup_disabled_warning_entities(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:
+    """Remove current warning entities when warnings are disabled for the entry."""
+    if entry.data.get(CONF_WARNINGS_ENABLED, True):
+        return
+
+    entity_registry = er.async_get(hass)
+    post_code = str(entry.data.get(CONF_POST_CODE, "")).strip()
+    if not post_code:
+        return
+
+    expected_unique_ids = {
+        f"{post_code}.{suffix}" for suffix in _WARNING_ENTITY_SUFFIXES
+    }
+    removed_count = 0
+    for entity_entry in list(entity_registry.entities.values()):
+        if entity_entry.platform != DOMAIN:
+            continue
+        if entity_entry.config_entry_id != entry.entry_id:
+            continue
+        if entity_entry.unique_id not in expected_unique_ids:
+            continue
+        entity_registry.async_remove(entity_entry.entity_id)
+        removed_count += 1
+
+    if removed_count:
+        _LOGGER.info(
+            "Removed %d swissweather warning entities because warnings are disabled",
+            removed_count,
+        )
+
+
+async def _async_migrate_warning_config(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> ConfigEntry:
+    """Migrate warning settings from legacy warning count to a boolean toggle."""
+    if (
+        CONF_WARNINGS_ENABLED in entry.data
+        and CONF_WEATHER_WARNINGS_NUMBER not in entry.data
+    ):
+        return entry
+
+    legacy_value = entry.data.get(CONF_WEATHER_WARNINGS_NUMBER)
+    warnings_enabled = True if legacy_value is None else int(legacy_value) >= 1
+    merged_data = dict(entry.data)
+    merged_data[CONF_WARNINGS_ENABLED] = warnings_enabled
+    merged_data.pop(CONF_WEATHER_WARNINGS_NUMBER, None)
+    hass.config_entries.async_update_entry(entry, data=merged_data)
+    return entry
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Swiss Weather from a config entry."""
+    entry = await _async_migrate_warning_config(hass, entry)
     entry = await _async_ensure_entry_names(hass, entry)
     await _async_cleanup_unconfigured_weather_entities(hass, entry)
     await _async_cleanup_legacy_devices(hass, entry)
     await _async_cleanup_optional_devices(hass, entry)
-    await _async_cleanup_warning_entities(hass, entry)
+    await _async_cleanup_legacy_warning_entities(hass, entry)
+    await _async_cleanup_disabled_warning_entities(hass, entry)
 
     coordinator = SwissWeatherDataCoordinator(hass, entry)
     pollen_coordinator = SwissPollenDataCoordinator(hass, entry)
@@ -246,7 +331,9 @@ async def async_remove_config_entry_device(
     return len(device_entities) == 0
 
 
-async def _async_ensure_entry_names(hass: HomeAssistant, entry: ConfigEntry) -> ConfigEntry:
+async def _async_ensure_entry_names(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> ConfigEntry:
     """Populate cached display names in older config entries and keep the title in sync."""
     data_updates = {}
 
@@ -266,7 +353,10 @@ async def _async_ensure_entry_names(hass: HomeAssistant, entry: ConfigEntry) -> 
         forecast_name = (
             forecast_point.display_name if forecast_point is not None else post_code
         )
-        if forecast_point is not None and forecast_point_type != forecast_point.point_type_id:
+        if (
+            forecast_point is not None
+            and forecast_point_type != forecast_point.point_type_id
+        ):
             data_updates[CONF_FORECAST_POINT_TYPE] = forecast_point.point_type_id
     elif forecast_point_type is None:
         forecast_point = find_forecast_point_by_id(forecast_points, post_code)
@@ -277,24 +367,36 @@ async def _async_ensure_entry_names(hass: HomeAssistant, entry: ConfigEntry) -> 
 
     if entry.data.get(CONF_STATION_CODE) and not entry.data.get(CONF_STATION_NAME):
         weather_stations = await hass.async_add_executor_job(load_weather_station_list)
-        station = find_station_by_code(weather_stations, entry.data.get(CONF_STATION_CODE))
+        station = find_station_by_code(
+            weather_stations, entry.data.get(CONF_STATION_CODE)
+        )
         if station is not None:
             station_name, station_canton = split_place_and_canton(station.name)
             data_updates[CONF_STATION_NAME] = format_station_display_name(
-                station_name, station_canton or station.canton, include_canton=True
-            )
-
-    if entry.data.get(CONF_POLLEN_STATION_CODE) and not entry.data.get(CONF_POLLEN_STATION_NAME):
-        pollen_stations = await hass.async_add_executor_job(load_pollen_station_list)
-        station = find_station_by_code(pollen_stations, entry.data.get(CONF_POLLEN_STATION_CODE))
-        if station is not None:
-            data_updates[CONF_POLLEN_STATION_NAME] = format_station_display_name(
-                station.name,
-                station.canton,
+                station_name,
+                station_canton or station.canton,
                 include_canton=True,
             )
 
+    if entry.data.get(CONF_POLLEN_STATION_CODE) and not entry.data.get(
+        CONF_POLLEN_STATION_NAME
+    ):
+        pollen_stations = await hass.async_add_executor_job(load_pollen_station_list)
+        station = find_station_by_code(
+            pollen_stations, entry.data.get(CONF_POLLEN_STATION_CODE)
+        )
+        if station is not None:
+            data_updates[CONF_POLLEN_STATION_NAME] = format_station_display_name(
+                station.name
+            )
+
+    if CONF_WARNINGS_ENABLED not in entry.data:
+        data_updates[CONF_WARNINGS_ENABLED] = bool(
+            entry.data.get(CONF_WEATHER_WARNINGS_NUMBER, 1)
+        )
+
     merged_data = {**entry.data, **data_updates}
+    merged_data.pop(CONF_WEATHER_WARNINGS_NUMBER, None)
     new_title = build_entry_title(
         merged_data.get(CONF_FORECAST_NAME),
         merged_data.get(CONF_STATION_NAME),
@@ -305,4 +407,3 @@ async def _async_ensure_entry_names(hass: HomeAssistant, entry: ConfigEntry) -> 
         hass.config_entries.async_update_entry(entry, data=merged_data, title=new_title)
 
     return entry
-

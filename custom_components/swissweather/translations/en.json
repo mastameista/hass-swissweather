@@ -31,12 +31,12 @@
         "data_description": {
           "stationCode": "Choose a nearby live weather station for current conditions.",
           "pollenStationCode": "Choose a pollen station, or leave it disabled if you do not want pollen entities.",
-          "weatherWarningsNumber": "Controls how many warning entities are created for this entry."
+          "warningsEnabled": "Creates warning entities for the selected forecast place, including warning count, highest level, and prioritized warning slots."
         },
         "data": {
           "stationCode": "Weather station for current weather state",
           "pollenStationCode": "Pollen measuring station",
-          "weatherWarningsNumber": "Number of weather warnings to show as separate entities (default: 1)"
+          "warningsEnabled": "Create weather warning entities"
         }
       },
       "forecast_pick": {
@@ -55,15 +55,14 @@
         "data_description": {
           "stationCode": "Choose a nearby live weather station for current conditions.",
           "pollenStationCode": "Choose a pollen station, or leave it disabled if you do not want pollen entities.",
-          "weatherWarningsNumber": "Controls how many warning entities are created for this entry."
+          "warningsEnabled": "Creates warning entities for the selected forecast place, including warning count, highest level, and prioritized warning slots."
         },
         "data": {
           "stationCode": "Weather station for current weather state",
           "pollenStationCode": "Pollen measuring station",
-          "weatherWarningsNumber": "Number of weather warnings to show as separate entities (default: 1)"
+          "warningsEnabled": "Create weather warning entities"
         }
       }
     }
   }
 }
-
