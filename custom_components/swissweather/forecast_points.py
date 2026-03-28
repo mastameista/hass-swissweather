@@ -13,6 +13,7 @@ from .naming import format_station_display_name
 from .request import REQUEST_TIMEOUT, async_get_with_retry
 
 _LOGGER = logging.getLogger(__name__)
+REQUEST_TIMEOUT = 10
 
 FORECAST_POINT_LIST_URL = (
     "https://data.geo.admin.ch/ch.meteoschweiz.ogd-local-forecasting/"
