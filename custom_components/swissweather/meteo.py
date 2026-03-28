@@ -12,6 +12,7 @@ from typing import NewType
 import requests
 
 logger = logging.getLogger(__name__)
+REQUEST_TIMEOUT = 10
 
 CURRENT_CONDITION_URL = (
     "https://data.geo.admin.ch/ch.meteoschweiz.messwerte-aktuell/VQHA80.csv"
@@ -287,6 +288,8 @@ class MeteoClient:
     def get_current_weather_for_all_stations(self) -> list[CurrentWeather] | None:
         logger.debug("Retrieving current weather for all stations ...")
         data = self._get_csv_dictionary_for_url(CURRENT_CONDITION_URL)
+        if data is None:
+            return None
         weather = []
         for row in data:
             weather.append(self._get_current_data_for_row(row))
@@ -583,10 +586,15 @@ class MeteoClient:
     def _get_csv_dictionary_for_url(self, url, encoding="utf-8"):
         try:
             logger.debug("Requesting station data from %s...", url)
-            with requests.get(url, stream=True) as r:
+            with requests.get(url, stream=True, timeout=REQUEST_TIMEOUT) as r:
+                r.raise_for_status()
                 lines = (line.decode(encoding) for line in r.iter_lines())
                 yield from csv.DictReader(lines, delimiter=";")
-        except requests.exceptions.RequestException:
+        except (
+            requests.exceptions.RequestException,
+            UnicodeDecodeError,
+            csv.Error,
+        ):
             logger.error("Connection failure.", exc_info=True)
             return None
 
@@ -605,18 +613,21 @@ class MeteoClient:
     def _get_forecast_json(
         self, postCode, language, forecastPointType: str | None = None
     ):
+        query_value = self._build_forecast_query_value(postCode, forecastPointType)
+        url = FORECAST_URL.format(query_value)
+        logger.debug("Requesting forecast data from %s...", url)
         try:
-            query_value = self._build_forecast_query_value(postCode, forecastPointType)
-            url = FORECAST_URL.format(query_value)
-            logger.debug("Requesting forecast data from %s...", url)
-            return requests.get(
+            response = requests.get(
                 url,
                 headers={
                     "User-Agent": FORECAST_USER_AGENT,
                     "Accept-Language": language,
                     "Accept": "application/json",
                 },
-            ).json()
-        except requests.exceptions.RequestException:
+                timeout=REQUEST_TIMEOUT,
+            )
+            response.raise_for_status()
+            return response.json()
+        except (requests.exceptions.RequestException, ValueError):
             logger.error("Connection failure.", exc_info=1)
             return None
