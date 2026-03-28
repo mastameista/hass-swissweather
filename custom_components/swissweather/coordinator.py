@@ -108,25 +108,33 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
     async def _async_update_data(self) -> WeatherData:
         current_state: CurrentWeather | None = None
         if self._station_code is None:
-            _LOGGER.warning("Station code not set, not loading current state.")
+            _LOGGER.debug("Station code not set, not loading current state.")
         else:
-            _LOGGER.info("Loading current weather state for %s", self._station_code)
+            _LOGGER.debug("Loading current weather state for %s", self._station_code)
             try:
                 current_state = await self.hass.async_add_executor_job(
                     self._client.get_current_weather_for_station, self._station_code
                 )
                 _LOGGER.debug("Current state: %s", current_state)
             except Exception as err:
-                _LOGGER.exception(err)
+                _LOGGER.warning(
+                    "Failed to load current weather state for %s",
+                    self._station_code,
+                    exc_info=err,
+                )
                 current_state = None
 
         try:
-            _LOGGER.info("Loading current forecast for %s", self._post_code)
+            _LOGGER.debug("Loading current forecast for %s", self._post_code)
             current_forecast = await self.hass.async_add_executor_job(
                 self._client.get_forecast,
                 self._post_code,
                 self._forecast_point_type,
             )
+            if current_forecast is None:
+                raise UpdateFailed(
+                    f"No forecast data returned for forecast point {self._post_code}"
+                )
             _LOGGER.debug("Current forecast: %s", current_forecast)
             if current_state is None and current_forecast is not None:
                 current = current_forecast.current
@@ -150,8 +158,9 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
             snapshot = build_warning_snapshot(
                 None if current_forecast is None else current_forecast.warnings
             )
+        except UpdateFailed:
+            raise
         except Exception as err:
-            _LOGGER.exception(err)
             raise UpdateFailed(f"Update failed: {err}") from err
 
         return WeatherData(
@@ -183,7 +192,7 @@ class SwissPollenDataCoordinator(DataUpdateCoordinator[CurrentPollen | None]):
         if self._pollen_station_code is None:
             _LOGGER.debug("Pollen code not set, not loading current state.")
         else:
-            _LOGGER.info("Loading current pollen state for %s", self._pollen_station_code)
+            _LOGGER.debug("Loading current pollen state for %s", self._pollen_station_code)
             try:
                 current_state = await self.hass.async_add_executor_job(
                     self._client.get_current_pollen_for_station,
@@ -191,6 +200,5 @@ class SwissPollenDataCoordinator(DataUpdateCoordinator[CurrentPollen | None]):
                 )
                 _LOGGER.debug("Current pollen: %s", current_state)
             except Exception as err:
-                _LOGGER.exception(err)
                 raise UpdateFailed(f"Update failed: {err}") from err
         return current_state

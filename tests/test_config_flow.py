@@ -166,3 +166,36 @@ def test_pollen_client_returns_none_on_json_failure(monkeypatch):
     )
     assert value is None
     assert timestamp is None
+
+
+def test_config_flow_caches_metadata_per_flow_instance():
+    calls: list[str] = []
+
+    class _CachingHass:
+        config = SimpleNamespace(latitude=47.0, longitude=8.0)
+
+        async def async_add_executor_job(self, func, *args):
+            calls.append(func.__name__)
+            if func.__name__ == "load_forecast_point_list":
+                return []
+            if func.__name__ == "load_weather_station_list":
+                return []
+            if func.__name__ == "load_pollen_station_list":
+                return []
+            raise AssertionError(f"Unexpected call: {func.__name__}")
+
+    flow = ConfigFlow()
+    flow.hass = _CachingHass()
+
+    asyncio.run(flow._async_get_forecast_points())
+    asyncio.run(flow._async_get_forecast_points())
+    asyncio.run(flow._async_get_weather_stations())
+    asyncio.run(flow._async_get_weather_stations())
+    asyncio.run(flow._async_get_pollen_stations())
+    asyncio.run(flow._async_get_pollen_stations())
+
+    assert calls == [
+        "load_forecast_point_list",
+        "load_weather_station_list",
+        "load_pollen_station_list",
+    ]

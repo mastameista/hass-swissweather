@@ -67,6 +67,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._selected_forecast_point_id: str | None = None
         self._selected_forecast_point_type: str | None = None
         self._last_forecast_query: str = ""
+        self._forecast_points_cache: list[Any] | None = None
+        self._weather_stations_cache: list[WeatherStation] | None = None
+        self._pollen_stations_cache: list[WeatherStation] | None = None
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -274,7 +277,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 origin_step, errors=errors, user_input=user_input
             )
 
-        forecast_points = await self.hass.async_add_executor_job(load_forecast_point_list)
+        forecast_points = await self._async_get_forecast_points()
         matches = search_forecast_points(forecast_points, query)
         if not matches:
             return await self._show_forecast_search_form(
@@ -310,7 +313,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _get_weather_station_options(self) -> list[SelectOptionDict]:
         """Load weather station options for the dropdown."""
-        stations = await self.hass.async_add_executor_job(load_weather_station_list)
+        stations = await self._async_get_weather_stations()
         if self.hass.config.latitude is not None and self.hass.config.longitude is not None:
             stations = sorted(stations, key=lambda item: self._get_distance_to_station(item))
         return [
@@ -320,7 +323,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _get_pollen_station_options(self) -> list[SelectOptionDict]:
         """Load pollen station options for the dropdown."""
-        pollen_stations = await self.hass.async_add_executor_job(load_pollen_station_list)
+        pollen_stations = await self._async_get_pollen_stations()
         if self.hass.config.latitude is not None and self.hass.config.longitude is not None:
             pollen_stations = sorted(
                 pollen_stations, key=lambda item: self._get_distance_to_station(item)
@@ -344,6 +347,30 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return None
         return distance(h_lat, h_lng, station.lat, station.lng)
 
+    async def _async_get_forecast_points(self) -> list[Any]:
+        """Load forecast-point metadata once per flow instance."""
+        if self._forecast_points_cache is None:
+            self._forecast_points_cache = await self.hass.async_add_executor_job(
+                load_forecast_point_list
+            )
+        return self._forecast_points_cache
+
+    async def _async_get_weather_stations(self) -> list[WeatherStation]:
+        """Load weather-station metadata once per flow instance."""
+        if self._weather_stations_cache is None:
+            self._weather_stations_cache = await self.hass.async_add_executor_job(
+                load_weather_station_list
+            )
+        return self._weather_stations_cache
+
+    async def _async_get_pollen_stations(self) -> list[WeatherStation]:
+        """Load pollen-station metadata once per flow instance."""
+        if self._pollen_stations_cache is None:
+            self._pollen_stations_cache = await self.hass.async_add_executor_job(
+                load_pollen_station_list
+            )
+        return self._pollen_stations_cache
+
     async def _augment_entry_data(
         self,
         user_input: dict[str, Any],
@@ -358,9 +385,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 post_code = reconfigure_entry.data.get(CONF_POST_CODE)
         resolved_data[CONF_POST_CODE] = str(post_code).strip() if post_code is not None else None
 
-        forecast_points = await self.hass.async_add_executor_job(load_forecast_point_list)
-        weather_stations = await self.hass.async_add_executor_job(load_weather_station_list)
-        pollen_stations = await self.hass.async_add_executor_job(load_pollen_station_list)
+        forecast_points = await self._async_get_forecast_points()
+        weather_stations = await self._async_get_weather_stations()
+        pollen_stations = await self._async_get_pollen_stations()
 
         station_code = user_input.get(CONF_STATION_CODE)
         pollen_station_code = user_input.get(CONF_POLLEN_STATION_CODE)
