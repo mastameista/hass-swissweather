@@ -11,6 +11,7 @@ import requests
 from .naming import format_station_display_name
 
 _LOGGER = logging.getLogger(__name__)
+REQUEST_TIMEOUT = 10
 
 FORECAST_POINT_LIST_URL = (
     "https://data.geo.admin.ch/ch.meteoschweiz.ogd-local-forecasting/"
@@ -53,35 +54,50 @@ def _float_or_none(value: str | None) -> float | None:
 def load_forecast_point_list(encoding: str = "latin-1") -> list[ForecastPoint]:
     """Load the list of MeteoSwiss local forecast points."""
     _LOGGER.info("Requesting forecast point list data...")
-    with requests.get(FORECAST_POINT_LIST_URL, stream=True) as response:
-        lines = (line.decode(encoding) for line in response.iter_lines())
-        reader = csv.DictReader(lines, delimiter=";")
-        points = []
-        for row in reader:
-            point_type_id = row.get("point_type_id")
-            point_id = row.get("point_id")
-            point_name = row.get("point_name")
-            if (
-                point_type_id not in SUPPORTED_FORECAST_POINT_TYPES
-                or not point_id
-                or not point_name
-            ):
-                continue
+    try:
+        with requests.get(
+            FORECAST_POINT_LIST_URL, stream=True, timeout=REQUEST_TIMEOUT
+        ) as response:
+            response.raise_for_status()
+            lines = (line.decode(encoding) for line in response.iter_lines())
+            reader = csv.DictReader(lines, delimiter=";")
+            points = []
+            for row in reader:
+                point_type_id = row.get("point_type_id")
+                point_id = row.get("point_id")
+                point_name = row.get("point_name")
+                if (
+                    point_type_id not in SUPPORTED_FORECAST_POINT_TYPES
+                    or not point_id
+                    or not point_name
+                ):
+                    continue
 
-            points.append(
-                ForecastPoint(
-                    point_id=point_id,
-                    point_type_id=point_type_id,
-                    postal_code=row.get("postal_code") or None,
-                    point_name=point_name,
-                    point_type_en=row.get("point_type_en") or None,
-                    point_height_masl=_int_or_none(row.get("point_height_masl")),
-                    lat=_float_or_none(row.get("point_coordinates_wgs84_lat")),
-                    lng=_float_or_none(row.get("point_coordinates_wgs84_lon")),
+                points.append(
+                    ForecastPoint(
+                        point_id=point_id,
+                        point_type_id=point_type_id,
+                        postal_code=row.get("postal_code") or None,
+                        point_name=point_name,
+                        point_type_en=row.get("point_type_en") or None,
+                        point_height_masl=_int_or_none(row.get("point_height_masl")),
+                        lat=_float_or_none(row.get("point_coordinates_wgs84_lat")),
+                        lng=_float_or_none(row.get("point_coordinates_wgs84_lon")),
+                    )
                 )
-            )
-        _LOGGER.info("Retrieved %d forecast points.", len(points))
-        return points
+    except (
+        requests.exceptions.RequestException,
+        UnicodeDecodeError,
+        csv.Error,
+        ValueError,
+    ):
+        _LOGGER.warning(
+            "Failed to load MeteoSwiss forecast point metadata", exc_info=True
+        )
+        return []
+
+    _LOGGER.info("Retrieved %d forecast points.", len(points))
+    return points
 
 
 def find_forecast_point_by_id(

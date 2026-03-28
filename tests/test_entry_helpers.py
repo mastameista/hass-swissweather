@@ -12,6 +12,7 @@ from custom_components.swissweather.__init__ import (
     _async_cleanup_disabled_warning_entities,
     _async_ensure_entry_unique_id,
     _async_migrate_warning_config,
+    async_migrate_entry,
 )
 from custom_components.swissweather.const import (
     CONF_POST_CODE,
@@ -121,3 +122,23 @@ def test_cleanup_disabled_warning_entities_only_removes_current_entry(monkeypatc
 
     assert registry.removed == ["sensor.bellinzona_primary_weather_warning"]
     assert "sensor.bellinzona_primary_weather_warning_duplicate" not in registry.removed
+
+
+def test_async_migrate_entry_bumps_major_version():
+    entry = SimpleNamespace(entry_id="entry-1", version=1)
+    hass = SimpleNamespace(config_entries=FakeConfigEntries())
+
+    result = asyncio.run(async_migrate_entry(hass, entry))
+
+    assert result is True
+    hass.config_entries.async_update_entry.assert_called_once_with(entry, version=2)
+
+
+def test_async_migrate_entry_rejects_future_version():
+    entry = SimpleNamespace(entry_id="entry-1", version=3)
+    hass = SimpleNamespace(config_entries=FakeConfigEntries())
+
+    result = asyncio.run(async_migrate_entry(hass, entry))
+
+    assert result is False
+    hass.config_entries.async_update_entry.assert_not_called()

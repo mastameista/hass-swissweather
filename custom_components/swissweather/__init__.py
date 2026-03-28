@@ -37,6 +37,7 @@ from .station_lookup import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+ENTRY_VERSION = 2
 
 PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR, Platform.WEATHER]
 _LEGACY_WARNING_INDEX_RE = re.compile(
@@ -68,6 +69,29 @@ class SwissWeatherRuntimeData:
 
     weather_coordinator: SwissWeatherDataCoordinator
     pollen_coordinator: SwissPollenDataCoordinator
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate older Swiss Weather config entries."""
+    _LOGGER.debug("Migrating Swiss Weather entry %s from version %s", entry.entry_id, entry.version)
+
+    if entry.version > ENTRY_VERSION:
+        _LOGGER.error(
+            "Cannot migrate Swiss Weather entry %s from unsupported future version %s",
+            entry.entry_id,
+            entry.version,
+        )
+        return False
+
+    if entry.version < ENTRY_VERSION:
+        hass.config_entries.async_update_entry(entry, version=ENTRY_VERSION)
+
+    _LOGGER.info(
+        "Swiss Weather entry %s migration complete at version %s",
+        entry.entry_id,
+        entry.version,
+    )
+    return True
 
 
 async def _async_remove_entry_device(

@@ -9,6 +9,7 @@ import requests
 from .meteo import FORECAST_USER_AGENT, FloatValue, StationInfo
 
 logger = logging.getLogger(__name__)
+REQUEST_TIMEOUT = 10
 
 POLLEN_STATIONS_URL = 'https://data.geo.admin.ch/ch.meteoschweiz.ogd-pollen/ogd-pollen_meta_stations.csv'
 POLLEN_DATA_URL = 'https://www.meteoschweiz.admin.ch/product/output/measured-values/stationsTable/messwerte-pollen-{}-1h/stationsTable.messwerte-pollen-{}-1h.en.json'
@@ -94,9 +95,16 @@ class PollenClient:
         url = POLLEN_DATA_URL.format(pollenKey, pollenKey)
         logger.debug("Loading %s", url)
         try:
-            pollenJson = requests.get(url, headers =
-                                        { "User-Agent": FORECAST_USER_AGENT,
-                                        "Accept": "application/json" }).json()
+            response = requests.get(
+                url,
+                headers={
+                    "User-Agent": FORECAST_USER_AGENT,
+                    "Accept": "application/json",
+                },
+                timeout=REQUEST_TIMEOUT,
+            )
+            response.raise_for_status()
+            pollenJson = response.json()
             stations = pollenJson.get("stations")
             if stations is None:
                 return (None, None)
@@ -116,16 +124,21 @@ class PollenClient:
                 return (value, timestamp)
             logger.warning("Couldn't find %s in dataset for %s!", stationAbbrev, pollenKey)
             return (None, None)
-        except requests.exceptions.RequestException as _:
+        except (requests.exceptions.RequestException, ValueError):
             logger.error("Connection failure.", exc_info=True)
             return (None, None)
 
     def _get_csv_dictionary_for_url(self, url, encoding='utf-8'):
         try:
             logger.debug("Requesting station data from %s...", url)
-            with requests.get(url, stream = True) as r:
+            with requests.get(url, stream=True, timeout=REQUEST_TIMEOUT) as r:
+                r.raise_for_status()
                 lines = (line.decode(encoding) for line in r.iter_lines())
                 yield from csv.DictReader(lines, delimiter=';')
-        except requests.exceptions.RequestException:
+        except (
+            requests.exceptions.RequestException,
+            UnicodeDecodeError,
+            csv.Error,
+        ):
             logger.error("Connection failure.", exc_info=True)
             return None
