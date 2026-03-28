@@ -58,7 +58,7 @@ WIND_DIRECTION_STATE_CLASS = getattr(
 @dataclass
 class SwissWeatherSensorEntry:
     key: str
-    description: str
+    translation_key: str
     data_function: Callable[[CurrentWeather], StateType | Decimal]
     native_unit: str
     device_class: SensorDeviceClass
@@ -68,7 +68,7 @@ class SwissWeatherSensorEntry:
 @dataclass
 class SwissPollenSensorEntry:
     key: str
-    description: str
+    translation_key: str
     data_function: Callable[[CurrentPollen], StateType | Decimal]
     device_class: SensorDeviceClass | None
 
@@ -80,30 +80,30 @@ def first_or_none(value):
 
 
 SENSORS: list[SwissWeatherSensorEntry] = [
-    SwissWeatherSensorEntry("time", "Time", lambda weather: weather.date, None, SensorDeviceClass.TIMESTAMP, None),
-    SwissWeatherSensorEntry("temperature", "Temperature", lambda weather: first_or_none(weather.airTemperature), UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT),
-    SwissWeatherSensorEntry("precipitation", "Precipitation", lambda weather: first_or_none(weather.precipitation), UnitOfPrecipitationDepth.MILLIMETERS, SensorDeviceClass.PRECIPITATION, SensorStateClass.MEASUREMENT),
-    SwissWeatherSensorEntry("sunshine", "Sunshine", lambda weather: first_or_none(weather.sunshine), UnitOfTime.MINUTES, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT),
-    SwissWeatherSensorEntry("global_radiation", "Global Radiation", lambda weather: first_or_none(weather.globalRadiation), UnitOfIrradiance.WATTS_PER_SQUARE_METER, SensorDeviceClass.IRRADIANCE, SensorStateClass.MEASUREMENT),
-    SwissWeatherSensorEntry("humidity", "Relative Humidity", lambda weather: first_or_none(weather.relativeHumidity), PERCENTAGE, SensorDeviceClass.HUMIDITY, SensorStateClass.MEASUREMENT),
-    SwissWeatherSensorEntry("dew_point", "Dew Point", lambda weather: first_or_none(weather.dewPoint), UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT),
-    SwissWeatherSensorEntry("wind_direction", "Wind Direction", lambda weather: first_or_none(weather.windDirection), DEGREE, WIND_DIRECTION_DEVICE_CLASS, WIND_DIRECTION_STATE_CLASS),
-    SwissWeatherSensorEntry("wind_speed", "Wind Speed", lambda weather: first_or_none(weather.windSpeed), UnitOfSpeed.KILOMETERS_PER_HOUR, SensorDeviceClass.WIND_SPEED, SensorStateClass.MEASUREMENT),
-    SwissWeatherSensorEntry("gust_peak1s", "Wind Gusts - Peak 1s", lambda weather: first_or_none(weather.gustPeak1s), UnitOfSpeed.KILOMETERS_PER_HOUR, SensorDeviceClass.WIND_SPEED, SensorStateClass.MEASUREMENT),
-    SwissWeatherSensorEntry("pressure", "Air Pressure", lambda weather: first_or_none(weather.pressureStationLevel), UnitOfPressure.HPA, SensorDeviceClass.ATMOSPHERIC_PRESSURE, SensorStateClass.MEASUREMENT),
-    SwissWeatherSensorEntry("pressure_qff", "Air Pressure - Sea Level (QFF)", lambda weather: first_or_none(weather.pressureSeaLevel), UnitOfPressure.HPA, SensorDeviceClass.ATMOSPHERIC_PRESSURE, SensorStateClass.MEASUREMENT),
-    SwissWeatherSensorEntry("pressure_qnh", "Air Pressure - Sea Level (QNH)", lambda weather: first_or_none(weather.pressureSeaLevelAtStandardAtmosphere), UnitOfPressure.HPA, SensorDeviceClass.ATMOSPHERIC_PRESSURE, SensorStateClass.MEASUREMENT),
+    SwissWeatherSensorEntry("time", "time", lambda weather: weather.date, None, SensorDeviceClass.TIMESTAMP, None),
+    SwissWeatherSensorEntry("temperature", "temperature", lambda weather: first_or_none(weather.airTemperature), UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT),
+    SwissWeatherSensorEntry("precipitation", "precipitation", lambda weather: first_or_none(weather.precipitation), UnitOfPrecipitationDepth.MILLIMETERS, SensorDeviceClass.PRECIPITATION, SensorStateClass.MEASUREMENT),
+    SwissWeatherSensorEntry("sunshine", "sunshine", lambda weather: first_or_none(weather.sunshine), UnitOfTime.MINUTES, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT),
+    SwissWeatherSensorEntry("global_radiation", "global_radiation", lambda weather: first_or_none(weather.globalRadiation), UnitOfIrradiance.WATTS_PER_SQUARE_METER, SensorDeviceClass.IRRADIANCE, SensorStateClass.MEASUREMENT),
+    SwissWeatherSensorEntry("humidity", "humidity", lambda weather: first_or_none(weather.relativeHumidity), PERCENTAGE, SensorDeviceClass.HUMIDITY, SensorStateClass.MEASUREMENT),
+    SwissWeatherSensorEntry("dew_point", "dew_point", lambda weather: first_or_none(weather.dewPoint), UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT),
+    SwissWeatherSensorEntry("wind_direction", "wind_direction", lambda weather: first_or_none(weather.windDirection), DEGREE, WIND_DIRECTION_DEVICE_CLASS, WIND_DIRECTION_STATE_CLASS),
+    SwissWeatherSensorEntry("wind_speed", "wind_speed", lambda weather: first_or_none(weather.windSpeed), UnitOfSpeed.KILOMETERS_PER_HOUR, SensorDeviceClass.WIND_SPEED, SensorStateClass.MEASUREMENT),
+    SwissWeatherSensorEntry("gust_peak1s", "gust_peak1s", lambda weather: first_or_none(weather.gustPeak1s), UnitOfSpeed.KILOMETERS_PER_HOUR, SensorDeviceClass.WIND_SPEED, SensorStateClass.MEASUREMENT),
+    SwissWeatherSensorEntry("pressure", "pressure", lambda weather: first_or_none(weather.pressureStationLevel), UnitOfPressure.HPA, SensorDeviceClass.ATMOSPHERIC_PRESSURE, SensorStateClass.MEASUREMENT),
+    SwissWeatherSensorEntry("pressure_qff", "pressure_qff", lambda weather: first_or_none(weather.pressureSeaLevel), UnitOfPressure.HPA, SensorDeviceClass.ATMOSPHERIC_PRESSURE, SensorStateClass.MEASUREMENT),
+    SwissWeatherSensorEntry("pressure_qnh", "pressure_qnh", lambda weather: first_or_none(weather.pressureSeaLevelAtStandardAtmosphere), UnitOfPressure.HPA, SensorDeviceClass.ATMOSPHERIC_PRESSURE, SensorStateClass.MEASUREMENT),
 ]
 
 POLLEN_SENSORS: list[SwissPollenSensorEntry] = [
-    SwissPollenSensorEntry("pollen-time", "Pollen Time", lambda pollen: pollen.timestamp, SensorDeviceClass.TIMESTAMP),
-    SwissPollenSensorEntry("birch", "Pollen - Birch", lambda pollen: first_or_none(pollen.birch), None),
-    SwissPollenSensorEntry("grasses", "Pollen - Grasses", lambda pollen: first_or_none(pollen.grasses), None),
-    SwissPollenSensorEntry("alder", "Pollen - Alder", lambda pollen: first_or_none(pollen.alder), None),
-    SwissPollenSensorEntry("hazel", "Pollen - Hazel", lambda pollen: first_or_none(pollen.hazel), None),
-    SwissPollenSensorEntry("beech", "Pollen - Beech", lambda pollen: first_or_none(pollen.beech), None),
-    SwissPollenSensorEntry("ash", "Pollen - Ash", lambda pollen: first_or_none(pollen.ash), None),
-    SwissPollenSensorEntry("oak", "Pollen - Oak", lambda pollen: first_or_none(pollen.oak), None),
+    SwissPollenSensorEntry("pollen-time", "pollen_time", lambda pollen: pollen.timestamp, SensorDeviceClass.TIMESTAMP),
+    SwissPollenSensorEntry("birch", "birch", lambda pollen: first_or_none(pollen.birch), None),
+    SwissPollenSensorEntry("grasses", "grasses", lambda pollen: first_or_none(pollen.grasses), None),
+    SwissPollenSensorEntry("alder", "alder", lambda pollen: first_or_none(pollen.alder), None),
+    SwissPollenSensorEntry("hazel", "hazel", lambda pollen: first_or_none(pollen.hazel), None),
+    SwissPollenSensorEntry("beech", "beech", lambda pollen: first_or_none(pollen.beech), None),
+    SwissPollenSensorEntry("ash", "ash", lambda pollen: first_or_none(pollen.ash), None),
+    SwissPollenSensorEntry("oak", "oak", lambda pollen: first_or_none(pollen.oak), None),
 ]
 
 WARNING_SLOT_LABELS = ("primary", "secondary", "tertiary")
@@ -230,13 +230,12 @@ class SwissWeatherSensor(CoordinatorEntity[SwissWeatherDataCoordinator], SensorE
         super().__init__(coordinator)
         self.entity_description = SensorEntityDescription(
             key=sensor_entry.key,
-            name=sensor_entry.description,
+            translation_key=sensor_entry.translation_key,
             native_unit_of_measurement=sensor_entry.native_unit,
             device_class=sensor_entry.device_class,
             state_class=sensor_entry.state_class,
         )
         self._sensor_entry = sensor_entry
-        self._attr_name = sensor_entry.description
         self._attr_unique_id = f"{post_code}.{sensor_entry.key}"
         self._attr_suggested_object_id = (
             f"{german_slug(sensor_entry.key)}_{german_slug(station_name)}"
@@ -290,10 +289,9 @@ class SwissWeatherWarningCountSensor(
         super().__init__(coordinator)
         self.entity_description = SensorEntityDescription(
             key="warning_count",
-            name="Weather Warning Count",
+            translation_key="warning_count",
             state_class=SensorStateClass.MEASUREMENT,
         )
-        self._attr_name = "Weather warning count"
         self._attr_unique_id = f"{post_code}.warning_count"
         self._attr_suggested_object_id = (
             f"weather_warning_count_{german_slug(forecast_name)}"
@@ -330,9 +328,8 @@ class SwissWeatherHighestWarningLevelSensor(
         super().__init__(coordinator)
         self.entity_description = SensorEntityDescription(
             key="highest_warning_level",
-            name="Highest Weather Warning Level",
+            translation_key="highest_warning_level",
         )
-        self._attr_name = "Highest weather warning level"
         self._attr_unique_id = f"{post_code}.highest_warning_level"
         self._attr_suggested_object_id = (
             f"highest_weather_warning_level_{german_slug(forecast_name)}"
@@ -386,14 +383,12 @@ class SwissWeatherWarningSlotSensor(
     ) -> None:
         super().__init__(coordinator)
         slot_label = WARNING_SLOT_LABELS[slot_index]
-        slot_name = slot_label.capitalize()
         self._slot_index = slot_index
         self._slot_label = slot_label
         self.entity_description = SensorEntityDescription(
             key=f"{slot_label}_warning",
-            name=f"{slot_name} Weather Warning",
+            translation_key=f"{slot_label}_warning",
         )
-        self._attr_name = f"{slot_name} weather warning"
         self._attr_unique_id = f"{post_code}.{slot_label}_warning"
         self._attr_suggested_object_id = (
             f"{slot_label}_weather_warning_{german_slug(forecast_name)}"
@@ -492,12 +487,11 @@ class SwissPollenSensor(CoordinatorEntity[SwissPollenDataCoordinator], SensorEnt
             unit = None
         self.entity_description = SensorEntityDescription(
             key=sensor_entry.key,
-            name=sensor_entry.description,
+            translation_key=sensor_entry.translation_key,
             native_unit_of_measurement=unit,
             state_class=state_class,
         )
         self._sensor_entry = sensor_entry
-        self._attr_name = sensor_entry.description
         self._attr_unique_id = f"pollen-{post_code}.{sensor_entry.key}"
         self._attr_suggested_object_id = (
             f"{german_slug(sensor_entry.key)}_{german_slug(station_name)}"
@@ -543,12 +537,11 @@ class SwissPollenLevelSensor(CoordinatorEntity[SwissPollenDataCoordinator], Sens
     ) -> None:
         super().__init__(coordinator)
         self.entity_description = SensorEntityDescription(
-            key=sensor_entry.key,
-            name=sensor_entry.description,
+            key=f"{sensor_entry.key}_level",
+            translation_key=f"{sensor_entry.translation_key}_level",
             device_class=SensorDeviceClass.ENUM,
         )
         self._sensor_entry = sensor_entry
-        self._attr_name = f"{sensor_entry.description} level"
         self._attr_unique_id = f"pollen-level-{post_code}.{sensor_entry.key}"
         self._attr_suggested_object_id = (
             f"{german_slug(sensor_entry.key)}_level_{german_slug(station_name)}"

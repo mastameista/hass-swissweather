@@ -54,7 +54,7 @@ class SwissWeatherHasWarningsBinarySensor(
         coordinator: SwissWeatherDataCoordinator,
     ) -> None:
         super().__init__(coordinator)
-        self._attr_name = "Has weather warnings"
+        self._attr_translation_key = "has_warnings"
         self._attr_unique_id = f"{post_code}.has_warnings"
         self._attr_suggested_object_id = (
             f"has_weather_warnings_{german_slug(forecast_name)}"

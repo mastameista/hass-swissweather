@@ -6,7 +6,7 @@ import csv
 from dataclasses import dataclass
 import logging
 
-import requests
+from aiohttp import ClientError, ClientSession
 
 from .pollen import PollenClient
 
@@ -40,15 +40,18 @@ def _float_or_none(val: str) -> float | None:
     return float(val)
 
 
-def load_weather_station_list(encoding: str = "ISO-8859-1") -> list[WeatherStation]:
+async def async_load_weather_station_list(
+    session: ClientSession, encoding: str = "ISO-8859-1"
+) -> list[WeatherStation]:
     """Load the list of MeteoSwiss weather stations."""
     _LOGGER.info("Requesting station list data...")
     try:
-        with requests.get(
-            STATION_LIST_URL, stream=True, timeout=REQUEST_TIMEOUT
+        async with session.get(
+            STATION_LIST_URL, timeout=REQUEST_TIMEOUT
         ) as response:
             response.raise_for_status()
-            lines = (line.decode(encoding) for line in response.iter_lines())
+            text = await response.text(encoding=encoding)
+            lines = text.splitlines()
             reader = csv.DictReader(lines, delimiter=";")
             stations = []
             for row in reader:
@@ -72,7 +75,8 @@ def load_weather_station_list(encoding: str = "ISO-8859-1") -> list[WeatherStati
                     )
                 )
     except (
-        requests.exceptions.RequestException,
+        ClientError,
+        TimeoutError,
         UnicodeDecodeError,
         csv.Error,
         ValueError,
@@ -84,12 +88,13 @@ def load_weather_station_list(encoding: str = "ISO-8859-1") -> list[WeatherStati
     return stations
 
 
-def load_pollen_station_list() -> list[WeatherStation]:
+async def async_load_pollen_station_list(
+    pollen_client: PollenClient,
+) -> list[WeatherStation]:
     """Load the list of pollen stations."""
     _LOGGER.info("Requesting pollen station list data...")
     try:
-        pollen_client = PollenClient()
-        pollen_station_list = pollen_client.get_pollen_station_list()
+        pollen_station_list = await pollen_client.async_get_pollen_station_list()
     except Exception:
         _LOGGER.warning("Failed to load MeteoSwiss pollen station metadata", exc_info=True)
         return []

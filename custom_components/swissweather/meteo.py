@@ -9,7 +9,7 @@ import itertools
 import logging
 from typing import NewType
 
-import requests
+from aiohttp import ClientError, ClientSession
 
 logger = logging.getLogger(__name__)
 REQUEST_TIMEOUT = 10
@@ -281,13 +281,16 @@ def parse_warning_level(value: int | None) -> WarningLevel:
 class MeteoClient:
     language: str = "en"
 
-    def __init__(self, language: str = "en"):
+    def __init__(self, session: ClientSession, language: str = "en"):
         """Initialize the MeteoSwiss client."""
+        self._session = session
         self.language = language
 
-    def get_current_weather_for_all_stations(self) -> list[CurrentWeather] | None:
+    async def async_get_current_weather_for_all_stations(
+        self,
+    ) -> list[CurrentWeather] | None:
         logger.debug("Retrieving current weather for all stations ...")
-        data = self._get_csv_dictionary_for_url(CURRENT_CONDITION_URL)
+        data = await self._async_get_csv_dictionary_for_url(CURRENT_CONDITION_URL)
         if data is None:
             return None
         weather = []
@@ -295,9 +298,11 @@ class MeteoClient:
             weather.append(self._get_current_data_for_row(row))
         return weather
 
-    def get_current_weather_for_station(self, station: str) -> CurrentWeather | None:
+    async def async_get_current_weather_for_station(
+        self, station: str
+    ) -> CurrentWeather | None:
         logger.debug("Retrieving current weather...")
-        data = self._get_current_weather_line_for_station(station)
+        data = await self._async_get_current_weather_line_for_station(station)
         if data is None:
             logger.warning("Couldn't find data for station %s", station)
             return None
@@ -328,10 +333,12 @@ class MeteoClient:
             (to_float(csv_row.get("pp0qnhs0", None)), "hPa"),
         )
 
-    def get_forecast(
+    async def async_get_forecast(
         self, postCode, forecastPointType: str | None = None
     ) -> WeatherForecast | None:
-        forecastJson = self._get_forecast_json(postCode, self.language, forecastPointType)
+        forecastJson = await self._async_get_forecast_json(
+            postCode, self.language, forecastPointType
+        )
         logger.debug("Forecast JSON: %s", forecastJson)
         if forecastJson is None:
             return None
@@ -571,30 +578,29 @@ class MeteoClient:
                 logger.error("Failed to parse warning", exc_info=True)
         return warnings
 
-    def _get_current_weather_line_for_station(self, station):
+    async def _async_get_current_weather_line_for_station(self, station):
         if station is None:
+            return None
+        data = await self._async_get_csv_dictionary_for_url(CURRENT_CONDITION_URL)
+        if data is None:
             return None
         return next(
             (
                 row
-                for row in self._get_csv_dictionary_for_url(CURRENT_CONDITION_URL)
+                for row in data
                 if row["Station/Location"].casefold() == station.casefold()
             ),
             None,
         )
 
-    def _get_csv_dictionary_for_url(self, url, encoding="utf-8"):
+    async def _async_get_csv_dictionary_for_url(self, url, encoding="utf-8"):
         try:
             logger.debug("Requesting station data from %s...", url)
-            with requests.get(url, stream=True, timeout=REQUEST_TIMEOUT) as r:
-                r.raise_for_status()
-                lines = (line.decode(encoding) for line in r.iter_lines())
-                yield from csv.DictReader(lines, delimiter=";")
-        except (
-            requests.exceptions.RequestException,
-            UnicodeDecodeError,
-            csv.Error,
-        ):
+            async with self._session.get(url, timeout=REQUEST_TIMEOUT) as response:
+                response.raise_for_status()
+                text = await response.text(encoding=encoding)
+                return list(csv.DictReader(text.splitlines(), delimiter=";"))
+        except (ClientError, TimeoutError, UnicodeDecodeError, csv.Error):
             logger.error("Connection failure.", exc_info=True)
             return None
 
@@ -610,14 +616,14 @@ class MeteoClient:
             return normalized.ljust(6, "0")
         return normalized
 
-    def _get_forecast_json(
+    async def _async_get_forecast_json(
         self, postCode, language, forecastPointType: str | None = None
     ):
         query_value = self._build_forecast_query_value(postCode, forecastPointType)
         url = FORECAST_URL.format(query_value)
         logger.debug("Requesting forecast data from %s...", url)
         try:
-            response = requests.get(
+            async with self._session.get(
                 url,
                 headers={
                     "User-Agent": FORECAST_USER_AGENT,
@@ -625,9 +631,9 @@ class MeteoClient:
                     "Accept": "application/json",
                 },
                 timeout=REQUEST_TIMEOUT,
-            )
-            response.raise_for_status()
-            return response.json()
-        except (requests.exceptions.RequestException, ValueError):
-            logger.error("Connection failure.", exc_info=1)
+            ) as response:
+                response.raise_for_status()
+                return await response.json()
+        except (ClientError, TimeoutError, ValueError):
+            logger.error("Connection failure.", exc_info=True)
             return None

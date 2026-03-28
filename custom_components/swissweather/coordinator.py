@@ -9,6 +9,7 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
@@ -95,7 +96,7 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
         self._station_code = config_entry.data.get(CONF_STATION_CODE)
         self._post_code = config_entry.data[CONF_POST_CODE]
         self._forecast_point_type = config_entry.data.get(CONF_FORECAST_POINT_TYPE)
-        self._client = MeteoClient()
+        self._client = MeteoClient(async_get_clientsession(hass))
         update_interval = timedelta(minutes=10)
         super().__init__(
             hass,
@@ -112,8 +113,8 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
         else:
             _LOGGER.debug("Loading current weather state for %s", self._station_code)
             try:
-                current_state = await self.hass.async_add_executor_job(
-                    self._client.get_current_weather_for_station, self._station_code
+                current_state = await self._client.async_get_current_weather_for_station(
+                    self._station_code
                 )
                 _LOGGER.debug("Current state: %s", current_state)
             except Exception as err:
@@ -126,8 +127,7 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
 
         try:
             _LOGGER.debug("Loading current forecast for %s", self._post_code)
-            current_forecast = await self.hass.async_add_executor_job(
-                self._client.get_forecast,
+            current_forecast = await self._client.async_get_forecast(
                 self._post_code,
                 self._forecast_point_type,
             )
@@ -177,7 +177,7 @@ class SwissPollenDataCoordinator(DataUpdateCoordinator[CurrentPollen | None]):
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
         self._pollen_station_code = config_entry.data.get(CONF_POLLEN_STATION_CODE)
-        self._client = PollenClient()
+        self._client = PollenClient(async_get_clientsession(hass))
         update_interval = timedelta(minutes=60)
         super().__init__(
             hass,
@@ -194,8 +194,7 @@ class SwissPollenDataCoordinator(DataUpdateCoordinator[CurrentPollen | None]):
         else:
             _LOGGER.debug("Loading current pollen state for %s", self._pollen_station_code)
             try:
-                current_state = await self.hass.async_add_executor_job(
-                    self._client.get_current_pollen_for_station,
+                current_state = await self._client.async_get_current_pollen_for_station(
                     self._pollen_station_code,
                 )
                 _LOGGER.debug("Current pollen: %s", current_state)

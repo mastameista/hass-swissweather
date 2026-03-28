@@ -14,23 +14,29 @@ from custom_components.swissweather.coordinator import SwissWeatherDataCoordinat
 
 
 class FakeHass:
-    def __init__(self, dispatcher):
-        self._dispatcher = dispatcher
-
-    async def async_add_executor_job(self, func, *args):
-        return self._dispatcher(func, *args)
+    pass
 
 
-def test_weather_coordinator_fails_when_forecast_missing():
-    def dispatcher(func, *args):
-        if func.__name__ == "get_current_weather_for_station":
+def test_weather_coordinator_fails_when_forecast_missing(monkeypatch):
+    from custom_components.swissweather import coordinator as coordinator_module
+
+    class _FakeMeteoClient:
+        def __init__(self, session):
+            self.session = session
+
+        async def async_get_current_weather_for_station(self, station_code):
             return None
-        if func.__name__ == "get_forecast":
+
+        async def async_get_forecast(self, post_code, forecast_point_type):
             return None
-        raise AssertionError(f"Unexpected call: {func.__name__}")
+
+    monkeypatch.setattr(
+        coordinator_module, "async_get_clientsession", lambda hass: object()
+    )
+    monkeypatch.setattr(coordinator_module, "MeteoClient", _FakeMeteoClient)
 
     coordinator = SwissWeatherDataCoordinator(
-        FakeHass(dispatcher),
+        FakeHass(),
         SimpleNamespace(
             data={CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"},
         ),
@@ -40,21 +46,31 @@ def test_weather_coordinator_fails_when_forecast_missing():
         asyncio.run(coordinator._async_update_data())
 
 
-def test_weather_coordinator_uses_forecast_current_as_fallback():
+def test_weather_coordinator_uses_forecast_current_as_fallback(monkeypatch):
+    from custom_components.swissweather import coordinator as coordinator_module
+
     forecast = SimpleNamespace(
         current=SimpleNamespace(currentTemperature=(12.3, "C")),
         warnings=[],
     )
 
-    def dispatcher(func, *args):
-        if func.__name__ == "get_current_weather_for_station":
+    class _FakeMeteoClient:
+        def __init__(self, session):
+            self.session = session
+
+        async def async_get_current_weather_for_station(self, station_code):
             raise RuntimeError("weather station offline")
-        if func.__name__ == "get_forecast":
+
+        async def async_get_forecast(self, post_code, forecast_point_type):
             return forecast
-        raise AssertionError(f"Unexpected call: {func.__name__}")
+
+    monkeypatch.setattr(
+        coordinator_module, "async_get_clientsession", lambda hass: object()
+    )
+    monkeypatch.setattr(coordinator_module, "MeteoClient", _FakeMeteoClient)
 
     coordinator = SwissWeatherDataCoordinator(
-        FakeHass(dispatcher),
+        FakeHass(),
         SimpleNamespace(
             data={CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"},
         ),

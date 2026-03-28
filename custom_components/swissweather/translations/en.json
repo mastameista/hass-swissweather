@@ -44,5 +44,118 @@
         }
       }
     }
+  },
+  "entity": {
+    "binary_sensor": {
+      "has_warnings": {
+        "name": "Has weather warnings"
+      }
+    },
+    "sensor": {
+      "time": {
+        "name": "Time"
+      },
+      "temperature": {
+        "name": "Temperature"
+      },
+      "precipitation": {
+        "name": "Precipitation"
+      },
+      "sunshine": {
+        "name": "Sunshine"
+      },
+      "global_radiation": {
+        "name": "Global radiation"
+      },
+      "humidity": {
+        "name": "Relative humidity"
+      },
+      "dew_point": {
+        "name": "Dew point"
+      },
+      "wind_direction": {
+        "name": "Wind direction"
+      },
+      "wind_speed": {
+        "name": "Wind speed"
+      },
+      "gust_peak1s": {
+        "name": "Wind gusts peak 1 s"
+      },
+      "pressure": {
+        "name": "Air pressure"
+      },
+      "pressure_qff": {
+        "name": "Air pressure sea level (QFF)"
+      },
+      "pressure_qnh": {
+        "name": "Air pressure sea level (QNH)"
+      },
+      "warning_count": {
+        "name": "Weather warning count"
+      },
+      "highest_warning_level": {
+        "name": "Highest weather warning level"
+      },
+      "primary_warning": {
+        "name": "Primary weather warning"
+      },
+      "secondary_warning": {
+        "name": "Secondary weather warning"
+      },
+      "tertiary_warning": {
+        "name": "Tertiary weather warning"
+      },
+      "pollen_time": {
+        "name": "Pollen time"
+      },
+      "birch": {
+        "name": "Pollen birch"
+      },
+      "birch_level": {
+        "name": "Pollen birch level"
+      },
+      "grasses": {
+        "name": "Pollen grasses"
+      },
+      "grasses_level": {
+        "name": "Pollen grasses level"
+      },
+      "alder": {
+        "name": "Pollen alder"
+      },
+      "alder_level": {
+        "name": "Pollen alder level"
+      },
+      "hazel": {
+        "name": "Pollen hazel"
+      },
+      "hazel_level": {
+        "name": "Pollen hazel level"
+      },
+      "beech": {
+        "name": "Pollen beech"
+      },
+      "beech_level": {
+        "name": "Pollen beech level"
+      },
+      "ash": {
+        "name": "Pollen ash"
+      },
+      "ash_level": {
+        "name": "Pollen ash level"
+      },
+      "oak": {
+        "name": "Pollen oak"
+      },
+      "oak_level": {
+        "name": "Pollen oak level"
+      }
+    },
+    "weather": {
+      "forecast": {
+        "name": "Forecast"
+      }
+    }
   }
 }

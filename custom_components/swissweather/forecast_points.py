@@ -6,7 +6,7 @@ import csv
 from dataclasses import dataclass
 import logging
 
-import requests
+from aiohttp import ClientError, ClientSession
 
 from .naming import format_station_display_name
 
@@ -51,15 +51,18 @@ def _float_or_none(value: str | None) -> float | None:
     return float(value)
 
 
-def load_forecast_point_list(encoding: str = "latin-1") -> list[ForecastPoint]:
+async def async_load_forecast_point_list(
+    session: ClientSession, encoding: str = "latin-1"
+) -> list[ForecastPoint]:
     """Load the list of MeteoSwiss local forecast points."""
     _LOGGER.info("Requesting forecast point list data...")
     try:
-        with requests.get(
-            FORECAST_POINT_LIST_URL, stream=True, timeout=REQUEST_TIMEOUT
+        async with session.get(
+            FORECAST_POINT_LIST_URL, timeout=REQUEST_TIMEOUT
         ) as response:
             response.raise_for_status()
-            lines = (line.decode(encoding) for line in response.iter_lines())
+            text = await response.text(encoding=encoding)
+            lines = text.splitlines()
             reader = csv.DictReader(lines, delimiter=";")
             points = []
             for row in reader:
@@ -86,7 +89,8 @@ def load_forecast_point_list(encoding: str = "latin-1") -> list[ForecastPoint]:
                     )
                 )
     except (
-        requests.exceptions.RequestException,
+        ClientError,
+        TimeoutError,
         UnicodeDecodeError,
         csv.Error,
         ValueError,

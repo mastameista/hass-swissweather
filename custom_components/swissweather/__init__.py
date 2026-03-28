@@ -8,6 +8,7 @@ import re
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from .const import (
@@ -23,18 +24,19 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import SwissPollenDataCoordinator, SwissWeatherDataCoordinator
-from .forecast_points import find_forecast_point_by_id, load_forecast_point_list
+from .forecast_points import async_load_forecast_point_list, find_forecast_point_by_id
 from .naming import (
     build_entry_title,
     build_entry_unique_id,
     format_station_display_name,
 )
 from .station_lookup import (
+    async_load_pollen_station_list,
+    async_load_weather_station_list,
     find_station_by_code,
-    load_pollen_station_list,
-    load_weather_station_list,
     split_place_and_canton,
 )
+from .pollen import PollenClient
 
 _LOGGER = logging.getLogger(__name__)
 ENTRY_VERSION = 2
@@ -270,12 +272,13 @@ async def async_remove_config_entry_device(
 async def _async_ensure_entry_names(hass: HomeAssistant, entry: ConfigEntry) -> ConfigEntry:
     """Populate cached display names in older config entries and keep the title in sync."""
     data_updates = {}
+    session = async_get_clientsession(hass)
 
     forecast_name = entry.data.get(CONF_FORECAST_NAME)
     post_code = str(entry.data.get(CONF_POST_CODE, "")).strip()
     forecast_point_type = entry.data.get(CONF_FORECAST_POINT_TYPE)
     if not forecast_name or forecast_name == post_code:
-        forecast_points = await hass.async_add_executor_job(load_forecast_point_list)
+        forecast_points = await async_load_forecast_point_list(session)
         forecast_point = find_forecast_point_by_id(forecast_points, post_code)
         forecast_name = (
             forecast_point.display_name if forecast_point is not None else post_code
@@ -283,7 +286,7 @@ async def _async_ensure_entry_names(hass: HomeAssistant, entry: ConfigEntry) -> 
         if forecast_point is not None and forecast_point_type != forecast_point.point_type_id:
             data_updates[CONF_FORECAST_POINT_TYPE] = forecast_point.point_type_id
     elif forecast_point_type is None:
-        forecast_points = await hass.async_add_executor_job(load_forecast_point_list)
+        forecast_points = await async_load_forecast_point_list(session)
         forecast_point = find_forecast_point_by_id(forecast_points, post_code)
         if forecast_point is not None:
             data_updates[CONF_FORECAST_POINT_TYPE] = forecast_point.point_type_id
@@ -291,7 +294,7 @@ async def _async_ensure_entry_names(hass: HomeAssistant, entry: ConfigEntry) -> 
         data_updates[CONF_FORECAST_NAME] = forecast_name
 
     if entry.data.get(CONF_STATION_CODE) and not entry.data.get(CONF_STATION_NAME):
-        weather_stations = await hass.async_add_executor_job(load_weather_station_list)
+        weather_stations = await async_load_weather_station_list(session)
         station = find_station_by_code(weather_stations, entry.data.get(CONF_STATION_CODE))
         if station is not None:
             station_name, station_canton = split_place_and_canton(station.name)
@@ -302,7 +305,7 @@ async def _async_ensure_entry_names(hass: HomeAssistant, entry: ConfigEntry) -> 
     if entry.data.get(CONF_POLLEN_STATION_CODE) and not entry.data.get(
         CONF_POLLEN_STATION_NAME
     ):
-        pollen_stations = await hass.async_add_executor_job(load_pollen_station_list)
+        pollen_stations = await async_load_pollen_station_list(PollenClient(session))
         station = find_station_by_code(
             pollen_stations, entry.data.get(CONF_POLLEN_STATION_CODE)
         )
