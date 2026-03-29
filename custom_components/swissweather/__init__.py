@@ -31,6 +31,7 @@ from .const import (
 from .coordinator import SwissPollenDataCoordinator, SwissWeatherDataCoordinator
 from .forecast_points import (
     ForecastPoint,
+    ForecastPointMetadataLoadError,
     async_load_forecast_point_list,
     find_forecast_point_by_id,
 )
@@ -40,7 +41,9 @@ from .naming import (
     format_station_display_name,
 )
 from .station_lookup import (
+    PollenStationMetadataLoadError,
     WeatherStation,
+    WeatherStationMetadataLoadError,
     async_load_pollen_station_list,
     async_load_weather_station_list,
     find_station_by_code,
@@ -94,6 +97,9 @@ class SwissWeatherMetadata:
     forecast_points: list[ForecastPoint]
     weather_stations: list[WeatherStation]
     pollen_stations: list[WeatherStation]
+    forecast_points_loaded: bool = True
+    weather_stations_loaded: bool = True
+    pollen_stations_loaded: bool = True
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -256,20 +262,44 @@ async def _async_load_metadata(
 ) -> SwissWeatherMetadata:
     """Load setup-time metadata once for this entry."""
     session = async_get_clientsession(hass)
-    forecast_points = await async_load_forecast_point_list(session)
+    forecast_points_loaded = True
+    try:
+        forecast_points = await async_load_forecast_point_list(
+            session, raise_on_error=True
+        )
+    except ForecastPointMetadataLoadError:
+        forecast_points = []
+        forecast_points_loaded = False
 
     weather_stations: list[WeatherStation] = []
+    weather_stations_loaded = True
     if entry.data.get(CONF_STATION_CODE):
-        weather_stations = await async_load_weather_station_list(session)
+        try:
+            weather_stations = await async_load_weather_station_list(
+                session, raise_on_error=True
+            )
+        except WeatherStationMetadataLoadError:
+            weather_stations = []
+            weather_stations_loaded = False
 
     pollen_stations: list[WeatherStation] = []
+    pollen_stations_loaded = True
     if entry.data.get(CONF_POLLEN_STATION_CODE):
-        pollen_stations = await async_load_pollen_station_list(PollenClient(session))
+        try:
+            pollen_stations = await async_load_pollen_station_list(
+                PollenClient(session), raise_on_error=True
+            )
+        except PollenStationMetadataLoadError:
+            pollen_stations = []
+            pollen_stations_loaded = False
 
     return SwissWeatherMetadata(
         forecast_points=forecast_points,
         weather_stations=weather_stations,
         pollen_stations=pollen_stations,
+        forecast_points_loaded=forecast_points_loaded,
+        weather_stations_loaded=weather_stations_loaded,
+        pollen_stations_loaded=pollen_stations_loaded,
     )
 
 
@@ -313,45 +343,47 @@ def _async_sync_repairs_issues(
     station_code = str(entry.data.get(CONF_STATION_CODE, "")).strip()
     pollen_station_code = str(entry.data.get(CONF_POLLEN_STATION_CODE, "")).strip()
 
-    forecast_missing = bool(
-        post_code and metadata.forecast_points and find_forecast_point_by_id(metadata.forecast_points, post_code) is None
-    )
-    _async_update_metadata_issue(
-        hass,
-        entry,
-        ISSUE_ID_MISSING_FORECAST_POINT,
-        active=forecast_missing,
-        translation_key=ISSUE_ID_MISSING_FORECAST_POINT,
-        translation_placeholders={"post_code": post_code, "entry_title": entry.title},
-    )
+    if metadata.forecast_points_loaded:
+        forecast_missing = bool(
+            post_code
+            and find_forecast_point_by_id(metadata.forecast_points, post_code) is None
+        )
+        _async_update_metadata_issue(
+            hass,
+            entry,
+            ISSUE_ID_MISSING_FORECAST_POINT,
+            active=forecast_missing,
+            translation_key=ISSUE_ID_MISSING_FORECAST_POINT,
+            translation_placeholders={"post_code": post_code, "entry_title": entry.title},
+        )
 
-    weather_missing = bool(
-        station_code
-        and metadata.weather_stations
-        and find_station_by_code(metadata.weather_stations, station_code) is None
-    )
-    _async_update_metadata_issue(
-        hass,
-        entry,
-        ISSUE_ID_MISSING_WEATHER_STATION,
-        active=weather_missing,
-        translation_key=ISSUE_ID_MISSING_WEATHER_STATION,
-        translation_placeholders={"station_code": station_code, "entry_title": entry.title},
-    )
+    if metadata.weather_stations_loaded:
+        weather_missing = bool(
+            station_code
+            and find_station_by_code(metadata.weather_stations, station_code) is None
+        )
+        _async_update_metadata_issue(
+            hass,
+            entry,
+            ISSUE_ID_MISSING_WEATHER_STATION,
+            active=weather_missing,
+            translation_key=ISSUE_ID_MISSING_WEATHER_STATION,
+            translation_placeholders={"station_code": station_code, "entry_title": entry.title},
+        )
 
-    pollen_missing = bool(
-        pollen_station_code
-        and metadata.pollen_stations
-        and find_station_by_code(metadata.pollen_stations, pollen_station_code) is None
-    )
-    _async_update_metadata_issue(
-        hass,
-        entry,
-        ISSUE_ID_MISSING_POLLEN_STATION,
-        active=pollen_missing,
-        translation_key=ISSUE_ID_MISSING_POLLEN_STATION,
-        translation_placeholders={"station_code": pollen_station_code, "entry_title": entry.title},
-    )
+    if metadata.pollen_stations_loaded:
+        pollen_missing = bool(
+            pollen_station_code
+            and find_station_by_code(metadata.pollen_stations, pollen_station_code) is None
+        )
+        _async_update_metadata_issue(
+            hass,
+            entry,
+            ISSUE_ID_MISSING_POLLEN_STATION,
+            active=pollen_missing,
+            translation_key=ISSUE_ID_MISSING_POLLEN_STATION,
+            translation_placeholders={"station_code": pollen_station_code, "entry_title": entry.title},
+        )
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

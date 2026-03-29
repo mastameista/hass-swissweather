@@ -540,6 +540,7 @@ class MeteoClient:
             return []
 
         warnings: list[Warning] = []
+        parse_errors = 0
         for warningJson in warningsJson:
             try:
                 raw_type = to_int(warningJson.get("warnType"))
@@ -586,8 +587,13 @@ class MeteoClient:
                         ),
                     )
                 )
-            except Exception:
+            except (AttributeError, KeyError, TypeError, ValueError):
+                parse_errors += 1
                 logger.error("Failed to parse warning", exc_info=True)
+
+        if warningsJson and parse_errors == len(warningsJson):
+            raise MeteoSwissDataError("Failed to parse MeteoSwiss warnings payload")
+
         return warnings
 
     async def _async_get_current_weather_line_for_station(self, station):

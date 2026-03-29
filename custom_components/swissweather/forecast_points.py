@@ -21,6 +21,10 @@ FORECAST_POINT_LIST_URL = (
 SUPPORTED_FORECAST_POINT_TYPES = {"2", "3"}
 
 
+class ForecastPointMetadataLoadError(Exception):
+    """Raised when forecast point metadata cannot be loaded reliably."""
+
+
 @dataclass
 class ForecastPoint:
     """Describes a local forecast point."""
@@ -52,7 +56,10 @@ def _float_or_none(value: str | None) -> float | None:
 
 
 async def async_load_forecast_point_list(
-    session: ClientSession, encoding: str = "latin-1"
+    session: ClientSession,
+    encoding: str = "latin-1",
+    *,
+    raise_on_error: bool = False,
 ) -> list[ForecastPoint]:
     """Load the list of MeteoSwiss local forecast points."""
     _LOGGER.info("Requesting forecast point list data...")
@@ -94,10 +101,14 @@ async def async_load_forecast_point_list(
         UnicodeDecodeError,
         csv.Error,
         ValueError,
-    ):
+    ) as err:
         _LOGGER.warning(
             "Failed to load MeteoSwiss forecast point metadata", exc_info=True
         )
+        if raise_on_error:
+            raise ForecastPointMetadataLoadError(
+                "Failed to load MeteoSwiss forecast point metadata"
+            ) from err
         return []
 
     _LOGGER.info("Retrieved %d forecast points.", len(points))

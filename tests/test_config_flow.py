@@ -159,6 +159,27 @@ def test_metadata_loaders_return_empty_on_failure(loader_name, expected):
     )
 
 
+def test_pollen_station_loader_skips_invalid_station_rows():
+    from custom_components.swissweather import station_lookup as module
+
+    pollen_station = SimpleNamespace(
+        name="Basel",
+        abbreviation="BAS",
+        altitude=None,
+        lat=47.0,
+        lng=8.0,
+        canton="BS",
+    )
+
+    class _PollenClient:
+        async def async_get_pollen_station_list(self):
+            return [pollen_station]
+
+    assert asyncio.run(module.async_load_pollen_station_list(_PollenClient())) == [
+        module.WeatherStation("Basel", "BAS", None, 47.0, 8.0, "BS")
+    ]
+
+
 def test_meteo_client_returns_none_when_station_csv_unavailable():
     from custom_components.swissweather import meteo
 

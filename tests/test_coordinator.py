@@ -11,7 +11,7 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.swissweather.const import CONF_POST_CODE, CONF_STATION_CODE
 from custom_components.swissweather.coordinator import SwissWeatherDataCoordinator
-from custom_components.swissweather.meteo import MeteoSwissConnectionError
+from custom_components.swissweather.meteo import MeteoSwissConnectionError, MeteoSwissDataError
 from custom_components.swissweather.pollen import PollenDataError
 
 
@@ -134,4 +134,31 @@ def test_pollen_coordinator_classifies_invalid_payload(monkeypatch):
     )
 
     with pytest.raises(UpdateFailed, match="invalid pollen payload"):
+        asyncio.run(coordinator._async_update_data())
+
+
+def test_weather_coordinator_classifies_invalid_warning_payload(monkeypatch):
+    from custom_components.swissweather import coordinator as coordinator_module
+
+    class _FakeMeteoClient:
+        def __init__(self, session):
+            self.session = session
+
+        async def async_get_current_weather_for_station(self, station_code):
+            return None
+
+        async def async_get_forecast(self, post_code, forecast_point_type):
+            raise MeteoSwissDataError("Failed to parse MeteoSwiss warnings payload")
+
+    monkeypatch.setattr(
+        coordinator_module, "async_get_clientsession", lambda hass: object()
+    )
+    monkeypatch.setattr(coordinator_module, "MeteoClient", _FakeMeteoClient)
+
+    coordinator = SwissWeatherDataCoordinator(
+        FakeHass(),
+        SimpleNamespace(data={CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"}),
+    )
+
+    with pytest.raises(UpdateFailed, match="invalid forecast payload"):
         asyncio.run(coordinator._async_update_data())

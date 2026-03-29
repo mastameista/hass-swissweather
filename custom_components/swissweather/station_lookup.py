@@ -8,12 +8,20 @@ import logging
 
 from aiohttp import ClientError, ClientSession
 
-from .pollen import PollenClient
+from .pollen import PollenClient, PollenClientError
 
 _LOGGER = logging.getLogger(__name__)
 REQUEST_TIMEOUT = 10
 
 STATION_LIST_URL = "https://data.geo.admin.ch/ch.meteoschweiz.messnetz-automatisch/ch.meteoschweiz.messnetz-automatisch_en.csv"
+
+
+class WeatherStationMetadataLoadError(Exception):
+    """Raised when weather station metadata cannot be loaded reliably."""
+
+
+class PollenStationMetadataLoadError(Exception):
+    """Raised when pollen station metadata cannot be loaded reliably."""
 
 
 @dataclass
@@ -41,7 +49,10 @@ def _float_or_none(val: str) -> float | None:
 
 
 async def async_load_weather_station_list(
-    session: ClientSession, encoding: str = "ISO-8859-1"
+    session: ClientSession,
+    encoding: str = "ISO-8859-1",
+    *,
+    raise_on_error: bool = False,
 ) -> list[WeatherStation]:
     """Load the list of MeteoSwiss weather stations."""
     _LOGGER.info("Requesting station list data...")
@@ -80,8 +91,12 @@ async def async_load_weather_station_list(
         UnicodeDecodeError,
         csv.Error,
         ValueError,
-    ):
+    ) as err:
         _LOGGER.warning("Failed to load MeteoSwiss station metadata", exc_info=True)
+        if raise_on_error:
+            raise WeatherStationMetadataLoadError(
+                "Failed to load MeteoSwiss station metadata"
+            ) from err
         return []
 
     _LOGGER.info("Retrieved %d weather stations.", len(stations))
@@ -90,13 +105,19 @@ async def async_load_weather_station_list(
 
 async def async_load_pollen_station_list(
     pollen_client: PollenClient,
+    *,
+    raise_on_error: bool = False,
 ) -> list[WeatherStation]:
     """Load the list of pollen stations."""
     _LOGGER.info("Requesting pollen station list data...")
     try:
         pollen_station_list = await pollen_client.async_get_pollen_station_list()
-    except Exception:
+    except (PollenClientError, Exception) as err:
         _LOGGER.warning("Failed to load MeteoSwiss pollen station metadata", exc_info=True)
+        if raise_on_error:
+            raise PollenStationMetadataLoadError(
+                "Failed to load MeteoSwiss pollen station metadata"
+            ) from err
         return []
 
     if pollen_station_list is None:
@@ -104,16 +125,23 @@ async def async_load_pollen_station_list(
 
     stations = []
     for station in pollen_station_list:
-        stations.append(
-            WeatherStation(
-                station.name,
-                station.abbreviation,
-                int(station.altitude),
-                station.lat,
-                station.lng,
-                station.canton,
+        try:
+            stations.append(
+                WeatherStation(
+                    station.name,
+                    station.abbreviation,
+                    int(station.altitude) if station.altitude is not None else None,
+                    station.lat,
+                    station.lng,
+                    station.canton,
+                )
             )
-        )
+        except (TypeError, ValueError):
+            _LOGGER.warning(
+                "Skipping invalid MeteoSwiss pollen station metadata row for %s",
+                station.abbreviation,
+                exc_info=True,
+            )
     return stations
 
 

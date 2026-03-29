@@ -218,3 +218,39 @@ def test_sync_repairs_issues_clears_weather_issue_when_station_exists(monkeypatc
     assert created == []
     assert ("swissweather", "missing_forecast_point_entry-2") in deleted
     assert ("swissweather", "missing_weather_station_entry-2") in deleted
+
+
+def test_sync_repairs_issues_keeps_existing_issues_when_metadata_unknown(monkeypatch):
+    from custom_components.swissweather import __init__ as init_module
+
+    created: list[tuple[str, str, dict]] = []
+    deleted: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        init_module.ir,
+        "async_create_issue",
+        lambda hass, domain, issue_id, **kwargs: created.append((domain, issue_id, kwargs)),
+    )
+    monkeypatch.setattr(
+        init_module.ir,
+        "async_delete_issue",
+        lambda hass, domain, issue_id: deleted.append((domain, issue_id)),
+    )
+
+    entry = SimpleNamespace(
+        entry_id="entry-3",
+        title="Bellinzona",
+        data={CONF_POST_CODE: "6500", "stationCode": "BAS", "pollenStationCode": "BAS"},
+    )
+    metadata = SwissWeatherMetadata(
+        forecast_points=[],
+        weather_stations=[],
+        pollen_stations=[],
+        forecast_points_loaded=False,
+        weather_stations_loaded=False,
+        pollen_stations_loaded=False,
+    )
+
+    _async_sync_repairs_issues(SimpleNamespace(), entry, metadata)
+
+    assert created == []
+    assert deleted == []
