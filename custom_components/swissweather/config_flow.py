@@ -30,6 +30,7 @@ from .const import (
     DOMAIN,
 )
 from .forecast_points import (
+    ForecastPointMetadataLoadError,
     async_load_forecast_point_list,
     find_forecast_point_by_id,
     format_forecast_point_label,
@@ -279,7 +280,16 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 origin_step, errors=errors, user_input=user_input
             )
 
-        forecast_points = await self._async_get_forecast_points()
+        try:
+            forecast_points = await self._async_get_forecast_points()
+        except ForecastPointMetadataLoadError:
+            _LOGGER.warning("Forecast-point metadata unavailable during config flow")
+            return await self._show_forecast_search_form(
+                origin_step,
+                errors={CONF_FORECAST_QUERY: "forecast_query_metadata_unavailable"},
+                user_input=user_input,
+            )
+
         matches = search_forecast_points(forecast_points, query)
         if not matches:
             return await self._show_forecast_search_form(
@@ -353,7 +363,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Load forecast-point metadata once per flow instance."""
         if self._forecast_points_cache is None:
             self._forecast_points_cache = await async_load_forecast_point_list(
-                async_get_clientsession(self.hass)
+                async_get_clientsession(self.hass),
+                raise_on_error=True,
             )
         return self._forecast_points_cache
 

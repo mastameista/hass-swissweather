@@ -8,9 +8,26 @@ import pytest
 
 pytest.importorskip("homeassistant")
 
+from homeassistant import config_entries
+
 from custom_components.swissweather import config_flow as config_flow_module
-from custom_components.swissweather.config_flow import ConfigFlow
-from custom_components.swissweather.const import CONF_FORECAST_NAME, CONF_POST_CODE
+from custom_components.swissweather.config_flow import (
+    ConfigFlow,
+    NO_POLLEN_STATION_OPTION,
+    SEARCH_AGAIN_OPTION,
+)
+from custom_components.swissweather.const import (
+    CONF_FORECAST_NAME,
+    CONF_POLLEN_STATION_CODE,
+    CONF_POST_CODE,
+    CONF_STATION_CODE,
+    CONF_WARNINGS_ENABLED,
+)
+from custom_components.swissweather.forecast_points import (
+    ForecastPoint,
+    ForecastPointMetadataLoadError,
+)
+from custom_components.swissweather.station_lookup import WeatherStation
 
 
 class FakeHass:
@@ -18,12 +35,48 @@ class FakeHass:
         self.config = SimpleNamespace(latitude=47.0, longitude=8.0)
 
 
-def test_handle_forecast_search_returns_not_found_when_metadata_unavailable(
-    monkeypatch,
-):
+def create_flow(
+    source: str = config_entries.SOURCE_USER,
+) -> ConfigFlow:
     flow = ConfigFlow()
     flow.hass = FakeHass()
-    flow._show_forecast_search_form = AsyncMock(return_value={"type": "form"})
+    flow.context = {"source": source}
+    flow.flow_id = "test-flow"
+    return flow
+
+
+def create_forecast_point() -> ForecastPoint:
+    return ForecastPoint(
+        "650000",
+        "2",
+        "6500",
+        "Bellinzona",
+        "ZIP",
+        238,
+        46.19,
+        9.02,
+    )
+
+
+def create_weather_station() -> WeatherStation:
+    return WeatherStation("Biasca", "BIA", 301, 46.36, 8.97, "TI")
+
+
+def create_pollen_station() -> WeatherStation:
+    return WeatherStation("Basel", "BAS", 260, 47.56, 7.59, "BS")
+
+
+def test_user_step_shows_search_form() -> None:
+    flow = create_flow()
+
+    result = asyncio.run(flow.async_step_user())
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "user"
+
+
+def test_user_step_reports_metadata_unavailable(monkeypatch) -> None:
+    flow = create_flow()
 
     monkeypatch.setattr(
         config_flow_module, "async_get_clientsession", lambda hass: object()
@@ -31,32 +84,23 @@ def test_handle_forecast_search_returns_not_found_when_metadata_unavailable(
     monkeypatch.setattr(
         config_flow_module,
         "async_load_forecast_point_list",
-        AsyncMock(return_value=[]),
+        AsyncMock(side_effect=ForecastPointMetadataLoadError("boom")),
     )
 
     result = asyncio.run(
-        flow._handle_forecast_search(
-            "user", {config_flow_module.CONF_FORECAST_QUERY: "Bellinzona"}
-        )
+        flow.async_step_user({config_flow_module.CONF_FORECAST_QUERY: "Bellinzona"})
     )
 
-    assert result == {"type": "form"}
-    flow._show_forecast_search_form.assert_awaited_once()
-    assert flow._show_forecast_search_form.await_args.kwargs["errors"] == {
-        config_flow_module.CONF_FORECAST_QUERY: "forecast_query_not_found"
+    assert result["type"] == "form"
+    assert result["step_id"] == "user"
+    assert result["errors"] == {
+        config_flow_module.CONF_FORECAST_QUERY: "forecast_query_metadata_unavailable"
     }
 
 
-def test_handle_forecast_search_routes_to_pick_step(monkeypatch):
-    match = SimpleNamespace(
-        point_id="6500",
-        point_type_id="2",
-        display_name="Bellinzona",
-        postal_code="6500",
-    )
-    flow = ConfigFlow()
-    flow.hass = FakeHass()
-    flow.async_step_forecast_pick = AsyncMock(return_value={"type": "pick"})
+def test_user_step_routes_to_forecast_pick_form(monkeypatch) -> None:
+    flow = create_flow()
+    match = create_forecast_point()
 
     monkeypatch.setattr(
         config_flow_module, "async_get_clientsession", lambda hass: object()
@@ -68,25 +112,124 @@ def test_handle_forecast_search_routes_to_pick_step(monkeypatch):
     )
 
     result = asyncio.run(
-        flow._handle_forecast_search(
-            "user", {config_flow_module.CONF_FORECAST_QUERY: "6500"}
+        flow.async_step_user({config_flow_module.CONF_FORECAST_QUERY: "6500"})
+    )
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "forecast_pick"
+    assert flow._pending_forecast_matches == [match]
+    assert flow._selected_forecast_point_id is None
+
+
+def test_forecast_pick_search_again_returns_search_form() -> None:
+    flow = create_flow()
+    flow._pending_forecast_matches = [create_forecast_point()]
+    flow._last_forecast_query = "Bellinzona"
+
+    result = asyncio.run(
+        flow.async_step_forecast_pick(
+            {config_flow_module.CONF_FORECAST_POINT: SEARCH_AGAIN_OPTION}
         )
     )
 
-    assert result == {"type": "pick"}
-    assert flow._pending_forecast_matches == [match]
+    assert result["type"] == "form"
+    assert result["step_id"] == "user"
+    assert flow._pending_forecast_matches == []
     assert flow._selected_forecast_point_id is None
-    flow.async_step_forecast_pick.assert_awaited_once()
+
+
+def test_forecast_pick_selected_point_routes_to_details_form(monkeypatch) -> None:
+    flow = create_flow()
+    point = create_forecast_point()
+    weather_station = create_weather_station()
+    pollen_station = create_pollen_station()
+    flow._pending_forecast_matches = [point]
+    flow.async_set_unique_id = AsyncMock()
+    flow._abort_if_unique_id_configured = Mock()
+
+    monkeypatch.setattr(
+        config_flow_module, "async_get_clientsession", lambda hass: object()
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_weather_station_list",
+        AsyncMock(return_value=[weather_station]),
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_pollen_station_list",
+        AsyncMock(return_value=[pollen_station]),
+    )
+
+    result = asyncio.run(
+        flow.async_step_forecast_pick(
+            {config_flow_module.CONF_FORECAST_POINT: point.point_id}
+        )
+    )
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "details"
+    assert flow._selected_forecast_point_id == point.point_id
+    assert flow._selected_forecast_point_type == point.point_type_id
+    flow.async_set_unique_id.assert_awaited_once()
+    flow._abort_if_unique_id_configured.assert_called_once()
+
+
+def test_details_step_creates_entry_from_public_flow(monkeypatch) -> None:
+    flow = create_flow()
+    point = create_forecast_point()
+    weather_station = create_weather_station()
+    pollen_station = create_pollen_station()
+    flow._selected_forecast_point_id = point.point_id
+    flow._selected_forecast_point_type = point.point_type_id
+
+    monkeypatch.setattr(
+        config_flow_module, "async_get_clientsession", lambda hass: object()
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_forecast_point_list",
+        AsyncMock(return_value=[point]),
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_weather_station_list",
+        AsyncMock(return_value=[weather_station]),
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_pollen_station_list",
+        AsyncMock(return_value=[pollen_station]),
+    )
+
+    result = asyncio.run(
+        flow.async_step_details(
+            {
+                CONF_STATION_CODE: weather_station.code,
+                CONF_POLLEN_STATION_CODE: NO_POLLEN_STATION_OPTION,
+                CONF_WARNINGS_ENABLED: True,
+            }
+        )
+    )
+
+    assert result["type"] == "create_entry"
+    assert result["title"] == "MeteoSwiss Bellinzona / Biasca TI"
+    assert result["description"] == "650000"
+    assert result["data"][CONF_POST_CODE] == point.point_id
+    assert result["data"][CONF_FORECAST_NAME] == "Bellinzona"
+    assert result["data"][CONF_STATION_CODE] == weather_station.code
+    assert result["data"][CONF_POLLEN_STATION_CODE] is None
+    assert result["data"][CONF_WARNINGS_ENABLED] is True
 
 
 def test_ensure_entry_names_keeps_setup_alive_when_metadata_unavailable(monkeypatch):
+    import custom_components.swissweather as init_module
+
     entry = SimpleNamespace(
         data={CONF_POST_CODE: "6500"},
         title="MeteoSwiss",
     )
     hass = SimpleNamespace(config_entries=SimpleNamespace(async_update_entry=Mock()))
-
-    from custom_components.swissweather import __init__ as init_module
 
     monkeypatch.setattr(init_module, "async_get_clientsession", lambda hass: object())
     monkeypatch.setattr(
@@ -226,7 +369,7 @@ def test_pollen_client_returns_none_on_json_failure():
 def test_config_flow_caches_metadata_per_flow_instance(monkeypatch):
     calls: list[str] = []
 
-    async def _load_forecast_points(session):
+    async def _load_forecast_points(session, **kwargs):
         calls.append("forecast")
         return []
 
@@ -251,8 +394,7 @@ def test_config_flow_caches_metadata_per_flow_instance(monkeypatch):
         config_flow_module, "async_load_pollen_station_list", _load_pollen_stations
     )
 
-    flow = ConfigFlow()
-    flow.hass = FakeHass()
+    flow = create_flow()
 
     asyncio.run(flow._async_get_forecast_points())
     asyncio.run(flow._async_get_forecast_points())
