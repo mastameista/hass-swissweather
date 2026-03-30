@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 from dataclasses import dataclass
 import logging
+import unicodedata
 
 from aiohttp import ClientError, ClientSession
 
@@ -53,6 +54,36 @@ def _float_or_none(value: str | None) -> float | None:
     if not value:
         return None
     return float(value)
+
+
+def _search_aliases(value: str | None) -> set[str]:
+    """Build normalized aliases for robust place matching."""
+    if not value:
+        return set()
+
+    lowered = value.strip().casefold()
+    if not lowered:
+        return set()
+
+    aliases = {lowered}
+    german_normalized = (
+        lowered.replace("ä", "ae")
+        .replace("ö", "oe")
+        .replace("ü", "ue")
+        .replace("ß", "ss")
+    )
+    aliases.add(german_normalized)
+
+    ascii_aliases = set()
+    for alias in aliases:
+        normalized = unicodedata.normalize("NFKD", alias)
+        ascii_alias = "".join(
+            char for char in normalized if not unicodedata.combining(char)
+        )
+        ascii_aliases.add(ascii_alias)
+
+    aliases.update(ascii_aliases)
+    return {alias for alias in aliases if alias}
 
 
 async def async_load_forecast_point_list(
@@ -143,9 +174,15 @@ def search_forecast_points(
     if len(normalized) < 2:
         return []
 
-    lowered = normalized.casefold()
+    query_aliases = _search_aliases(normalized)
     matches = [
-        point for point in points if lowered in point.display_name.casefold()
+        point
+        for point in points
+        if any(
+            query_alias in point_alias
+            for query_alias in query_aliases
+            for point_alias in _search_aliases(point.display_name)
+        )
     ]
     return sorted(matches, key=lambda point: (point.display_name, point.point_type_id))
 
