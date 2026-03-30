@@ -254,3 +254,40 @@ def test_sync_repairs_issues_keeps_existing_issues_when_metadata_unknown(monkeyp
 
     assert created == []
     assert deleted == []
+
+
+def test_sync_repairs_issues_ignores_unconfigured_pollen_station(monkeypatch):
+    from custom_components.swissweather import __init__ as init_module
+
+    created: list[tuple[str, str, dict]] = []
+    deleted: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        init_module.ir,
+        "async_create_issue",
+        lambda hass, domain, issue_id, **kwargs: created.append((domain, issue_id, kwargs)),
+    )
+    monkeypatch.setattr(
+        init_module.ir,
+        "async_delete_issue",
+        lambda hass, domain, issue_id: deleted.append((domain, issue_id)),
+    )
+
+    entry = SimpleNamespace(
+        entry_id="entry-4",
+        title="Sevelen",
+        data={
+            CONF_POST_CODE: "9475",
+            "stationCode": "VAD",
+            "pollenStationCode": None,
+        },
+    )
+    metadata = SwissWeatherMetadata(
+        forecast_points=[SimpleNamespace(point_id="9475")],
+        weather_stations=[SimpleNamespace(code="VAD")],
+        pollen_stations=[SimpleNamespace(code="BAS")],
+    )
+
+    _async_sync_repairs_issues(SimpleNamespace(), entry, metadata)
+
+    assert created == []
+    assert ("swissweather", "missing_pollen_station_entry-4") in deleted

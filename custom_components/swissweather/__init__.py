@@ -308,6 +308,13 @@ def _entry_issue_id(entry: ConfigEntry, issue_key: str) -> str:
     return f"{issue_key}_{entry.entry_id}"
 
 
+def _coerce_config_value(value: object) -> str:
+    """Return a normalized config-entry string value."""
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
 def _async_update_metadata_issue(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -339,9 +346,11 @@ def _async_sync_repairs_issues(
     hass: HomeAssistant, entry: ConfigEntry, metadata: SwissWeatherMetadata
 ) -> None:
     """Create repairs issues for stale stored metadata references."""
-    post_code = str(entry.data.get(CONF_POST_CODE, "")).strip()
-    station_code = str(entry.data.get(CONF_STATION_CODE, "")).strip()
-    pollen_station_code = str(entry.data.get(CONF_POLLEN_STATION_CODE, "")).strip()
+    post_code = _coerce_config_value(entry.data.get(CONF_POST_CODE, ""))
+    station_code = _coerce_config_value(entry.data.get(CONF_STATION_CODE, ""))
+    pollen_station_code = _coerce_config_value(
+        entry.data.get(CONF_POLLEN_STATION_CODE, "")
+    )
 
     if metadata.forecast_points_loaded:
         forecast_missing = bool(
