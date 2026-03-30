@@ -19,8 +19,10 @@ from custom_components.swissweather.config_flow import (
 from custom_components.swissweather.const import (
     CONF_FORECAST_NAME,
     CONF_POLLEN_STATION_CODE,
+    CONF_POLLEN_STATION_NAME,
     CONF_POST_CODE,
     CONF_STATION_CODE,
+    CONF_STATION_NAME,
     CONF_WARNINGS_ENABLED,
 )
 from custom_components.swissweather.forecast_points import (
@@ -220,6 +222,49 @@ def test_details_step_creates_entry_from_public_flow(monkeypatch) -> None:
     assert result["data"][CONF_STATION_CODE] == weather_station.code
     assert result["data"][CONF_POLLEN_STATION_CODE] is None
     assert result["data"][CONF_WARNINGS_ENABLED] is True
+
+
+def test_details_step_formats_pollen_station_like_weather_station(monkeypatch) -> None:
+    flow = create_flow()
+    point = create_forecast_point()
+    weather_station = create_weather_station()
+    pollen_station = create_pollen_station()
+    flow._selected_forecast_point_id = point.point_id
+    flow._selected_forecast_point_type = point.point_type_id
+
+    monkeypatch.setattr(
+        config_flow_module, "async_get_clientsession", lambda hass: object()
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_forecast_point_list",
+        AsyncMock(return_value=[point]),
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_weather_station_list",
+        AsyncMock(return_value=[weather_station]),
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_pollen_station_list",
+        AsyncMock(return_value=[pollen_station]),
+    )
+
+    result = asyncio.run(
+        flow.async_step_details(
+            {
+                CONF_STATION_CODE: weather_station.code,
+                CONF_POLLEN_STATION_CODE: pollen_station.code,
+                CONF_WARNINGS_ENABLED: True,
+            }
+        )
+    )
+
+    assert result["type"] == "create_entry"
+    assert result["title"] == "MeteoSwiss Bellinzona / Biasca TI / Basel BS"
+    assert result["data"][CONF_STATION_NAME] == "Biasca TI"
+    assert result["data"][CONF_POLLEN_STATION_NAME] == "Basel BS"
 
 
 def test_ensure_entry_names_keeps_setup_alive_when_metadata_unavailable(monkeypatch):

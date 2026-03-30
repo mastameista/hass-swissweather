@@ -34,6 +34,7 @@ from .forecast_points import (
     ForecastPointMetadataLoadError,
     async_load_forecast_point_list,
     find_forecast_point_by_id,
+    find_forecast_point_by_stored_value,
 )
 from .naming import (
     build_entry_title,
@@ -154,6 +155,58 @@ async def _async_cleanup_optional_devices(
         await _async_remove_entry_device(hass, entry, "pollen-station")
 
 
+async def _async_cleanup_legacy_devices(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:
+    """Remove empty devices from the legacy upstream device model."""
+    post_code = _coerce_config_value(entry.data.get(CONF_POST_CODE, ""))
+    if not post_code:
+        return
+
+    station_code = _coerce_config_value(entry.data.get(CONF_STATION_CODE, ""))
+    legacy_identifiers = {f"swissweather-{post_code}"}
+    if station_code:
+        legacy_identifiers.add(f"swissweather-{post_code}-{station_code}")
+
+    device_registry = dr.async_get(hass)
+    entity_registry = er.async_get(hass)
+    removed_count = 0
+
+    devices_by_identifier: dict[str, object] = {}
+    for device in getattr(device_registry, "devices", {}).values():
+        for identifier in getattr(device, "identifiers", set()) or set():
+            if not identifier or identifier[0] != DOMAIN:
+                continue
+            devices_by_identifier[str(identifier[1])] = device
+
+    for legacy_identifier in legacy_identifiers:
+        device = devices_by_identifier.get(legacy_identifier)
+        if device is None:
+            device = device_registry.async_get_device(
+                identifiers={(DOMAIN, legacy_identifier)},
+                connections=set(),
+            )
+        if device is None:
+            continue
+
+        if not getattr(device, "config_entries", None):
+            device_registry.async_remove_device(device.id)
+            removed_count += 1
+            continue
+
+        device_entities = er.async_entries_for_device(
+            entity_registry, device.id, include_disabled_entities=True
+        )
+        if device_entities:
+            continue
+
+        device_registry.async_remove_device(device.id)
+        removed_count += 1
+
+    if removed_count:
+        _LOGGER.info("Removed %d empty legacy swissweather devices", removed_count)
+
+
 async def _async_cleanup_legacy_warning_entities(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> None:
@@ -211,6 +264,42 @@ async def _async_cleanup_disabled_warning_entities(
             "Removed %d swissweather warning entities because warnings are disabled",
             removed_count,
         )
+
+
+async def _async_sync_entry_device_names(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:
+    """Keep registry device names aligned with the current config entry names."""
+    device_registry = dr.async_get(hass)
+    expected_names = {
+        f"{entry.entry_id}-forecast": entry.data.get(CONF_FORECAST_NAME),
+        f"{entry.entry_id}-weather-station": entry.data.get(CONF_STATION_NAME),
+        f"{entry.entry_id}-pollen-station": entry.data.get(CONF_POLLEN_STATION_NAME),
+    }
+
+    updated_count = 0
+    for identifier, expected_name in expected_names.items():
+        if not expected_name:
+            continue
+
+        device = device_registry.async_get_device(
+            identifiers={(DOMAIN, identifier)},
+            connections=set(),
+        )
+        if device is None or getattr(device, "name_by_user", None):
+            continue
+        if device.name == expected_name:
+            continue
+
+        device_registry.async_update_device(
+            device.id,
+            name=expected_name,
+            new_identifiers=device.identifiers,
+        )
+        updated_count += 1
+
+    if updated_count:
+        _LOGGER.info("Updated %d swissweather device names from config entry metadata", updated_count)
 
 
 async def _async_migrate_warning_config(
@@ -355,7 +444,12 @@ def _async_sync_repairs_issues(
     if metadata.forecast_points_loaded:
         forecast_missing = bool(
             post_code
-            and find_forecast_point_by_id(metadata.forecast_points, post_code) is None
+            and find_forecast_point_by_stored_value(
+                metadata.forecast_points,
+                post_code,
+                entry.data.get(CONF_FORECAST_POINT_TYPE),
+            )
+            is None
         )
         _async_update_metadata_issue(
             hass,
@@ -410,6 +504,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     metadata = await _async_load_metadata(hass, entry)
     entry = await _async_ensure_entry_names(hass, entry, metadata)
     _async_sync_repairs_issues(hass, entry, metadata)
+    await _async_cleanup_legacy_devices(hass, entry)
     await _async_cleanup_optional_devices(hass, entry)
     await _async_cleanup_legacy_warning_entities(hass, entry)
     await _async_cleanup_disabled_warning_entities(hass, entry)
@@ -424,6 +519,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     _LOGGER.debug("Bootstrapped entry %s", entry)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await _async_sync_entry_device_names(hass, entry)
+    await _async_cleanup_legacy_devices(hass, entry)
     return True
 
 
@@ -460,39 +557,47 @@ async def _async_ensure_entry_names(
     post_code = str(entry.data.get(CONF_POST_CODE, "")).strip()
     forecast_point_type = entry.data.get(CONF_FORECAST_POINT_TYPE)
     if not forecast_name or forecast_name == post_code:
-        forecast_point = find_forecast_point_by_id(metadata.forecast_points, post_code)
+        forecast_point = find_forecast_point_by_stored_value(
+            metadata.forecast_points, post_code, forecast_point_type
+        )
         forecast_name = (
             forecast_point.display_name if forecast_point is not None else post_code
         )
         if forecast_point is not None and forecast_point_type != forecast_point.point_type_id:
             data_updates[CONF_FORECAST_POINT_TYPE] = forecast_point.point_type_id
     elif forecast_point_type is None:
-        forecast_point = find_forecast_point_by_id(metadata.forecast_points, post_code)
+        forecast_point = find_forecast_point_by_stored_value(
+            metadata.forecast_points, post_code, forecast_point_type
+        )
         if forecast_point is not None:
             data_updates[CONF_FORECAST_POINT_TYPE] = forecast_point.point_type_id
     if forecast_name and entry.data.get(CONF_FORECAST_NAME) != forecast_name:
         data_updates[CONF_FORECAST_NAME] = forecast_name
 
-    if entry.data.get(CONF_STATION_CODE) and not entry.data.get(CONF_STATION_NAME):
+    if entry.data.get(CONF_STATION_CODE):
         station = find_station_by_code(
             metadata.weather_stations, entry.data.get(CONF_STATION_CODE)
         )
         if station is not None:
             station_name, station_canton = split_place_and_canton(station.name)
-            data_updates[CONF_STATION_NAME] = format_station_display_name(
+            formatted_station_name = format_station_display_name(
                 station_name, station_canton or station.canton, include_canton=True
             )
+            if entry.data.get(CONF_STATION_NAME) != formatted_station_name:
+                data_updates[CONF_STATION_NAME] = formatted_station_name
 
-    if entry.data.get(CONF_POLLEN_STATION_CODE) and not entry.data.get(
-        CONF_POLLEN_STATION_NAME
-    ):
+    if entry.data.get(CONF_POLLEN_STATION_CODE):
         station = find_station_by_code(
             metadata.pollen_stations, entry.data.get(CONF_POLLEN_STATION_CODE)
         )
         if station is not None:
-            data_updates[CONF_POLLEN_STATION_NAME] = format_station_display_name(
-                station.name
+            formatted_pollen_station_name = format_station_display_name(
+                station.name,
+                station.canton,
+                include_canton=True,
             )
+            if entry.data.get(CONF_POLLEN_STATION_NAME) != formatted_pollen_station_name:
+                data_updates[CONF_POLLEN_STATION_NAME] = formatted_pollen_station_name
 
     if CONF_WARNINGS_ENABLED not in entry.data:
         data_updates[CONF_WARNINGS_ENABLED] = bool(
