@@ -380,10 +380,18 @@ def _async_sync_repairs_issues(
             translation_placeholders={"station_code": station_code, "entry_title": entry.title},
         )
 
-    if metadata.pollen_stations_loaded:
-        pollen_missing = bool(
-            pollen_station_code
-            and find_station_by_code(metadata.pollen_stations, pollen_station_code) is None
+    if not pollen_station_code:
+        _async_update_metadata_issue(
+            hass,
+            entry,
+            ISSUE_ID_MISSING_POLLEN_STATION,
+            active=False,
+            translation_key=ISSUE_ID_MISSING_POLLEN_STATION,
+            translation_placeholders={"station_code": pollen_station_code, "entry_title": entry.title},
+        )
+    elif metadata.pollen_stations_loaded:
+        pollen_missing = (
+            find_station_by_code(metadata.pollen_stations, pollen_station_code) is None
         )
         _async_update_metadata_issue(
             hass,

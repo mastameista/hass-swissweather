@@ -285,6 +285,7 @@ def test_sync_repairs_issues_ignores_unconfigured_pollen_station(monkeypatch):
         forecast_points=[SimpleNamespace(point_id="9475")],
         weather_stations=[SimpleNamespace(code="VAD")],
         pollen_stations=[SimpleNamespace(code="BAS")],
+        pollen_stations_loaded=False,
     )
 
     _async_sync_repairs_issues(SimpleNamespace(), entry, metadata)
