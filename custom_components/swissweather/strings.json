@@ -45,7 +45,8 @@
       "invalid_forecast_point": "Select one of the matching forecast places."
     },
     "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
+      "reconfigure_successful": "Configuration updated successfully."
     }
   },
   "entity": {
