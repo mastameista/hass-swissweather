@@ -87,6 +87,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle config entry reconfiguration."""
+        reconfigure_entry = self._get_reconfigure_entry()
+        reconfigure_unique_id = getattr(reconfigure_entry, "unique_id", None)
+        if reconfigure_unique_id is not None:
+            await self.async_set_unique_id(reconfigure_unique_id)
+
         if user_input is None:
             return await self._show_details_form("reconfigure")
 

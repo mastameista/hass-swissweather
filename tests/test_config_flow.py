@@ -277,6 +277,7 @@ def test_details_step_creates_entry_from_public_flow(monkeypatch) -> None:
 def test_reconfigure_step_updates_existing_entry(monkeypatch) -> None:
     flow = create_flow(config_entries.SOURCE_RECONFIGURE)
     entry = SimpleNamespace(
+        unique_id="forecast_650000",
         data={
             CONF_POST_CODE: "650000",
             CONF_FORECAST_NAME: "Bellinzona",
@@ -288,10 +289,14 @@ def test_reconfigure_step_updates_existing_entry(monkeypatch) -> None:
     weather_station = create_weather_station()
     pollen_station = create_pollen_station()
     flow._get_reconfigure_entry = Mock(return_value=entry)
-    flow._abort_if_unique_id_mismatch = Mock()
     flow.async_update_reload_and_abort = Mock(
         return_value={"type": "abort", "reason": "reconfigure_successful"}
     )
+
+    async def _set_unique_id(value: str) -> None:
+        flow.context["unique_id"] = value
+
+    flow.async_set_unique_id = AsyncMock(side_effect=_set_unique_id)
 
     monkeypatch.setattr(
         config_flow_module, "async_get_clientsession", lambda hass: object()
@@ -323,7 +328,7 @@ def test_reconfigure_step_updates_existing_entry(monkeypatch) -> None:
     )
 
     assert result == {"type": "abort", "reason": "reconfigure_successful"}
-    flow._abort_if_unique_id_mismatch.assert_called_once()
+    flow.async_set_unique_id.assert_awaited_once_with(entry.unique_id)
     flow.async_update_reload_and_abort.assert_called_once()
     assert (
         flow.async_update_reload_and_abort.call_args.kwargs["data_updates"][
