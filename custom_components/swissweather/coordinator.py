@@ -109,6 +109,7 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
         self._station_code = config_entry.data.get(CONF_STATION_CODE)
         self._post_code = config_entry.data[CONF_POST_CODE]
         self._forecast_point_type = config_entry.data.get(CONF_FORECAST_POINT_TYPE)
+        self._current_station_unavailable = False
         self._client = MeteoClient(async_get_clientsession(hass))
         update_interval = timedelta(minutes=10)
         super().__init__(
@@ -118,6 +119,36 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
             update_interval=update_interval,
             always_update=False,
         )
+
+    def _handle_current_station_failure(self, details: str | None = None) -> None:
+        """Log current station outages once and degrade to forecast fallback."""
+        if self._station_code is None:
+            return
+        if not self._current_station_unavailable:
+            if details:
+                _LOGGER.warning(
+                    "Current weather state for %s unavailable; using forecast fallback: %s",
+                    self._station_code,
+                    details,
+                )
+            else:
+                _LOGGER.warning(
+                    "Current weather state for %s unavailable; using forecast fallback",
+                    self._station_code,
+                )
+            self._current_station_unavailable = True
+            return
+        _LOGGER.debug(
+            "Current weather state for %s is still unavailable",
+            self._station_code,
+        )
+
+    def _handle_current_station_recovery(self) -> None:
+        """Log when the current station recovers after an outage."""
+        if self._station_code is None or not self._current_station_unavailable:
+            return
+        _LOGGER.info("Current weather state for %s recovered", self._station_code)
+        self._current_station_unavailable = False
 
     async def _async_update_data(self) -> WeatherData:
         current_state: CurrentWeather | None = None
@@ -130,19 +161,15 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
                     self._station_code
                 )
                 _LOGGER.debug("Current state: %s", current_state)
+                if current_state is None:
+                    self._handle_current_station_failure("no station data returned")
+                else:
+                    self._handle_current_station_recovery()
             except (MeteoSwissConnectionError, MeteoSwissDataError) as err:
-                _LOGGER.warning(
-                    "Failed to load current weather state for %s: %s",
-                    self._station_code,
-                    err,
-                )
+                self._handle_current_station_failure(str(err))
                 current_state = None
             except Exception as err:
-                _LOGGER.warning(
-                    "Failed to load current weather state for %s",
-                    self._station_code,
-                    exc_info=err,
-                )
+                self._handle_current_station_failure(type(err).__name__)
                 current_state = None
 
         try:

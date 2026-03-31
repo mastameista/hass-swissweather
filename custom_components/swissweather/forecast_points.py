@@ -10,9 +10,9 @@ import unicodedata
 from aiohttp import ClientError, ClientSession
 
 from .naming import format_station_display_name
+from .request import REQUEST_TIMEOUT, async_get_with_retry
 
 _LOGGER = logging.getLogger(__name__)
-REQUEST_TIMEOUT = 10
 
 FORECAST_POINT_LIST_URL = (
     "https://data.geo.admin.ch/ch.meteoschweiz.ogd-local-forecasting/"
@@ -95,10 +95,7 @@ async def async_load_forecast_point_list(
     """Load the list of MeteoSwiss local forecast points."""
     _LOGGER.info("Requesting forecast point list data...")
     try:
-        async with session.get(
-            FORECAST_POINT_LIST_URL, timeout=REQUEST_TIMEOUT
-        ) as response:
-            response.raise_for_status()
+        async def _parse_csv(response) -> list[ForecastPoint]:
             text = await response.text(encoding=encoding)
             lines = text.splitlines()
             reader = csv.DictReader(lines, delimiter=";")
@@ -126,6 +123,15 @@ async def async_load_forecast_point_list(
                         lng=_float_or_none(row.get("point_coordinates_wgs84_lon")),
                     )
                 )
+            return points
+
+        points = await async_get_with_retry(
+            session,
+            FORECAST_POINT_LIST_URL,
+            logger=_LOGGER,
+            response_handler=_parse_csv,
+            timeout=REQUEST_TIMEOUT,
+        )
     except (
         ClientError,
         TimeoutError,

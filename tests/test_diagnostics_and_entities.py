@@ -54,7 +54,7 @@ def test_diagnostics_redacts_entry_location_data():
     assert diagnostics["weather"]["warning_snapshot"]["count"] == 0
 
 
-def test_weather_entity_keeps_place_name_without_forecast_suffix():
+def test_weather_entity_uses_device_name_as_main_feature():
     coordinator = SimpleNamespace(data=None)
     entity = SwissWeather(
         coordinator,
@@ -65,4 +65,5 @@ def test_weather_entity_keeps_place_name_without_forecast_suffix():
         ),
     )
 
-    assert entity.name == "Sevelen"
+    assert entity.name is None
+    assert entity.device_info["name"] == "Sevelen"

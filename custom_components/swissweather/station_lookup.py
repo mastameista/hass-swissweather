@@ -9,9 +9,9 @@ import logging
 from aiohttp import ClientError, ClientSession
 
 from .pollen import PollenClient, PollenClientError
+from .request import REQUEST_TIMEOUT, async_get_with_retry
 
 _LOGGER = logging.getLogger(__name__)
-REQUEST_TIMEOUT = 10
 
 STATION_LIST_URL = "https://data.geo.admin.ch/ch.meteoschweiz.messnetz-automatisch/ch.meteoschweiz.messnetz-automatisch_en.csv"
 
@@ -57,10 +57,7 @@ async def async_load_weather_station_list(
     """Load the list of MeteoSwiss weather stations."""
     _LOGGER.info("Requesting station list data...")
     try:
-        async with session.get(
-            STATION_LIST_URL, timeout=REQUEST_TIMEOUT
-        ) as response:
-            response.raise_for_status()
+        async def _parse_csv(response) -> list[WeatherStation]:
             text = await response.text(encoding=encoding)
             lines = text.splitlines()
             reader = csv.DictReader(lines, delimiter=";")
@@ -85,6 +82,15 @@ async def async_load_weather_station_list(
                         row.get("Canton"),
                     )
                 )
+            return stations
+
+        stations = await async_get_with_retry(
+            session,
+            STATION_LIST_URL,
+            logger=_LOGGER,
+            response_handler=_parse_csv,
+            timeout=REQUEST_TIMEOUT,
+        )
     except (
         ClientError,
         TimeoutError,

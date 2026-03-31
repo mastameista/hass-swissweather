@@ -11,8 +11,9 @@ from typing import NewType
 
 from aiohttp import ClientError, ClientSession
 
+from .request import REQUEST_TIMEOUT, async_get_with_retry
+
 logger = logging.getLogger(__name__)
-REQUEST_TIMEOUT = 10
 
 CURRENT_CONDITION_URL = (
     "https://data.geo.admin.ch/ch.meteoschweiz.messwerte-aktuell/VQHA80.csv"
@@ -622,10 +623,17 @@ class MeteoClient:
     async def _async_get_csv_dictionary_for_url(self, url, encoding="utf-8"):
         try:
             logger.debug("Requesting station data from %s...", url)
-            async with self._session.get(url, timeout=REQUEST_TIMEOUT) as response:
-                response.raise_for_status()
+            async def _parse_csv(response) -> list[dict[str, str]]:
                 text = await response.text(encoding=encoding)
                 return list(csv.DictReader(text.splitlines(), delimiter=";"))
+
+            return await async_get_with_retry(
+                self._session,
+                url,
+                logger=logger,
+                response_handler=_parse_csv,
+                timeout=REQUEST_TIMEOUT,
+            )
         except (ClientError, TimeoutError) as err:
             raise MeteoSwissConnectionError(
                 f"Failed to fetch MeteoSwiss CSV from {url}"
@@ -654,17 +662,21 @@ class MeteoClient:
         url = FORECAST_URL.format(query_value)
         logger.debug("Requesting forecast data from %s...", url)
         try:
-            async with self._session.get(
+            async def _parse_json(response):
+                return await response.json()
+
+            return await async_get_with_retry(
+                self._session,
                 url,
+                logger=logger,
+                response_handler=_parse_json,
                 headers={
                     "User-Agent": FORECAST_USER_AGENT,
                     "Accept-Language": language,
                     "Accept": "application/json",
                 },
                 timeout=REQUEST_TIMEOUT,
-            ) as response:
-                response.raise_for_status()
-                return await response.json()
+            )
         except (ClientError, TimeoutError) as err:
             raise MeteoSwissConnectionError(
                 f"Failed to fetch MeteoSwiss forecast from {url}"
