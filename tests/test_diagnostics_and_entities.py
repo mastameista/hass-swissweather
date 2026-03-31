@@ -9,11 +9,15 @@ pytest.importorskip("homeassistant")
 
 from custom_components.swissweather.const import (
     CONF_FORECAST_NAME,
+    CONF_POLLEN_STATION_CODE,
     CONF_POST_CODE,
+    CONF_STATION_CODE,
     CONF_STATION_NAME,
+    CONF_WARNINGS_ENABLED,
 )
 from custom_components.swissweather.coordinator import WarningSnapshot, WeatherData
 from custom_components.swissweather.diagnostics import async_get_config_entry_diagnostics
+from custom_components.swissweather.sensor import async_setup_entry as async_setup_sensor_entry
 from custom_components.swissweather.weather import SwissWeather
 
 
@@ -89,3 +93,40 @@ def test_weather_entity_exposes_forecast_and_current_sources():
         "current_weather_source": "Vaduz FL",
     }
     assert entity.attribution == "MeteoSwiss. Forecast: Sevelen. Current weather: Vaduz FL."
+
+
+def test_sensor_setup_skips_current_weather_sensors_without_station():
+    added_entities = []
+    config_entry = SimpleNamespace(
+        entry_id="entry-1",
+        data={
+            CONF_POST_CODE: "9475",
+            CONF_FORECAST_NAME: "Sevelen",
+            CONF_STATION_CODE: None,
+            CONF_POLLEN_STATION_CODE: None,
+            CONF_WARNINGS_ENABLED: True,
+        },
+        runtime_data=SimpleNamespace(
+            weather_coordinator=SimpleNamespace(data=None),
+            pollen_coordinator=SimpleNamespace(data=None),
+        ),
+    )
+
+    def _add_entities(entities):
+        added_entities.extend(entities)
+
+    asyncio.run(
+        async_setup_sensor_entry(
+            SimpleNamespace(),
+            config_entry,
+            _add_entities,
+        )
+    )
+
+    assert [entity.unique_id for entity in added_entities] == [
+        "9475.warning_count",
+        "9475.highest_warning_level",
+        "9475.primary_warning",
+        "9475.secondary_warning",
+        "9475.tertiary_warning",
+    ]

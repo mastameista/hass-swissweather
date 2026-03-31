@@ -151,6 +151,8 @@ async def _async_cleanup_optional_devices(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> None:
     """Remove optional devices that are no longer configured."""
+    if entry.data.get(CONF_STATION_CODE) is None:
+        await _async_remove_entry_device(hass, entry, "weather-station")
     if entry.data.get(CONF_POLLEN_STATION_CODE) is None:
         await _async_remove_entry_device(hass, entry, "pollen-station")
 

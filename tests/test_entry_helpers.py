@@ -9,6 +9,7 @@ import pytest
 pytest.importorskip("homeassistant")
 
 from custom_components.swissweather.__init__ import (
+    _async_cleanup_optional_devices,
     _async_cleanup_legacy_devices,
     _async_cleanup_disabled_warning_entities,
     _async_ensure_entry_names,
@@ -345,6 +346,50 @@ def test_cleanup_legacy_devices_removes_active_legacy_device_without_entities(
     asyncio.run(_async_cleanup_legacy_devices(SimpleNamespace(), entry))
 
     assert device_registry.removed == ["legacy-active-device"]
+
+
+def test_cleanup_optional_devices_removes_unconfigured_weather_and_pollen_devices(
+    monkeypatch,
+):
+    from custom_components.swissweather import __init__ as init_module
+
+    device_registry = FakeDeviceRegistry(
+        {
+            "entry-1-weather-station": SimpleNamespace(id="weather-device"),
+            "entry-1-pollen-station": SimpleNamespace(id="pollen-device"),
+            "entry-1-forecast": SimpleNamespace(id="forecast-device"),
+        }
+    )
+    entity_registry = FakeEntityRegistry(
+        [
+            SimpleNamespace(entity_id="sensor.weather_temperature"),
+            SimpleNamespace(entity_id="sensor.pollen_birch"),
+        ]
+    )
+
+    monkeypatch.setattr(init_module.dr, "async_get", lambda hass: device_registry)
+    monkeypatch.setattr(init_module.er, "async_get", lambda hass: entity_registry)
+    monkeypatch.setattr(
+        init_module.er,
+        "async_entries_for_device",
+        lambda registry, device_id, include_disabled_entities=True: [
+            SimpleNamespace(entity_id="sensor.weather_temperature")
+        ]
+        if device_id == "weather-device"
+        else [SimpleNamespace(entity_id="sensor.pollen_birch")]
+        if device_id == "pollen-device"
+        else [],
+    )
+
+    entry = SimpleNamespace(
+        entry_id="entry-1",
+        data={CONF_POST_CODE: "650000", CONF_STATION_CODE: None, CONF_POLLEN_STATION_CODE: None},
+    )
+
+    asyncio.run(_async_cleanup_optional_devices(SimpleNamespace(), entry))
+
+    assert device_registry.removed == ["weather-device", "pollen-device"]
+    assert entity_registry.removed == ["sensor.weather_temperature", "sensor.pollen_birch"]
 
 
 def test_sync_entry_device_names_updates_existing_pollen_device(monkeypatch):

@@ -150,17 +150,22 @@ async def async_setup_entry(
         name=forecast_name,
         identifiers={(DOMAIN, f"{config_entry.entry_id}-forecast")},
     )
-    weather_device = DeviceInfo(
-        entry_type=DeviceEntryType.SERVICE,
-        name=weather_station_name,
-        identifiers={(DOMAIN, f"{config_entry.entry_id}-weather-station")},
-    )
-    entities: list[SensorEntity] = [
-        SwissWeatherSensor(
-            postCode, weather_station_name, weather_device, sensorEntry, coordinator
+    entities: list[SensorEntity] = []
+
+    if stationCode is not None:
+        weather_device = DeviceInfo(
+            entry_type=DeviceEntryType.SERVICE,
+            name=weather_station_name,
+            identifiers={(DOMAIN, f"{config_entry.entry_id}-weather-station")},
         )
-        for sensorEntry in SENSORS
-    ]
+        entities.extend(
+            [
+                SwissWeatherSensor(
+                    postCode, weather_station_name, weather_device, sensorEntry, coordinator
+                )
+                for sensorEntry in SENSORS
+            ]
+        )
 
     if pollenStationCode is not None:
         pollenCoordinator = runtime_data.pollen_coordinator
