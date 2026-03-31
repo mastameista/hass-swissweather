@@ -32,8 +32,6 @@ The warning model in this fork is:
 * `secondary_warning`
 * `tertiary_warning`
 
-The three warning slots are prioritized so dashboards can show the most important warning first without having to handle an arbitrary list of numbered warning entities.
-
 ## Installation
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=izacus&repository=hass-swissweather&category=integration)
@@ -54,7 +52,7 @@ The three warning slots are prioritized so dashboards can show the most importan
 Add the Swiss Weather integration in Home Assistant and follow the config flow:
 
 1. **Search forecast place**
-   Search by place name, postal code, or MeteoSwiss forecast point ID.
+   Search by place name, postal code, MeteoSwiss forecast point ID, or points of interest such as peaks, passes, and huts.
 2. **Select forecast place**
    Choose the exact forecast place you want to use.
 3. **Choose stations**
@@ -65,7 +63,7 @@ Add the Swiss Weather integration in Home Assistant and follow the config flow:
 Configuration options:
 
 * **Forecast place**: Used for the weather entity, hourly and daily forecast, and weather warnings.
-* **Weather station for current weather state**: Optional live measurement station. Choose a nearby station within reason, especially with altitude differences in mind.
+* **Weather station for current weather state**: Optional live measurement station. When configured, the weather entity uses this station for current conditions and the forecast place for the forecast. Choose a nearby station within reason, especially with altitude differences in mind.
 * **Pollen measuring station**: Optional pollen station for pollen entities.
 * **Create weather warning entities**: Enables the warning entities for the selected forecast place.
 
@@ -73,8 +71,9 @@ You can reconfigure an existing entry later to change the weather station, polle
 
 ## Notes and limitations
 
-* Forecast data is based on the selected MeteoSwiss forecast place, not on the optional live weather station.
-* Current weather sensors are only created when a weather station is selected.
+* Forecast data is based on the selected MeteoSwiss forecast place.
+* If a weather station is selected, current conditions in the weather entity and the current weather sensors come from that live measurement station.
+* If no weather station is selected, the weather entity falls back to MeteoSwiss forecast data for current conditions and no current weather sensors are created.
 * Pollen entities are only created when a pollen station is selected.
 * The integration depends on MeteoSwiss forecast and station metadata being available. If MeteoSwiss changes or temporarily removes metadata, the integration may ask you to reconfigure the affected entry.
 
@@ -91,59 +90,3 @@ This integration follows standard Home Assistant integration removal.
 3. Select **Delete**
 
 If you installed the integration through HACS and no longer want to keep the custom repository installed, remove it from HACS after deleting the integration from Home Assistant.
-
-### Example Weather Alert mushroom card
-
-Example mushroom cards that show the primary warning first and only reveal secondary / tertiary slots when they currently exist:
-
-```yaml
-type: custom:mushroom-template-card
-icon: mdi:alert
-primary: >
-  {{ states('sensor.primary_weather_warning_8000') | replace('_', ' ') | title }}
-secondary: "{{ state_attr('sensor.primary_weather_warning_8000', 'text') }}"
-icon_color: >
-  {{ state_attr('sensor.primary_weather_warning_8000', 'icon_color') }}
-badge_color: red
-badge_icon: |
-  {% set number_of_warnings = states('sensor.weather_warning_count_8000') | int %}
-  {% if number_of_warnings > 9 %}
-    mdi:numeric-9-plus
-  {% elif number_of_warnings > 1 and number_of_warnings < 10 %}
-    mdi:numeric-{{ number_of_warnings }}
-  {% endif %}
-multiline_secondary: true
-tap_action:
-  action: more-info
-  entity: sensor.primary_weather_warning_8000
-visibility:
-  - condition: state_not
-    entity: sensor.primary_weather_warning_8000
-    state: "unknown"
----
-type: custom:mushroom-template-card
-icon: mdi:alert-outline
-primary: >
-  {{ states('sensor.secondary_weather_warning_8000') | replace('_', ' ') | title }}
-secondary: "{{ state_attr('sensor.secondary_weather_warning_8000', 'text') }}"
-icon_color: >
-  {{ state_attr('sensor.secondary_weather_warning_8000', 'icon_color') }}
-multiline_secondary: true
-visibility:
-  - condition: state_not
-    entity: sensor.secondary_weather_warning_8000
-    state: "unknown"
----
-type: custom:mushroom-template-card
-icon: mdi:alert-outline
-primary: >
-  {{ states('sensor.tertiary_weather_warning_8000') | replace('_', ' ') | title }}
-secondary: "{{ state_attr('sensor.tertiary_weather_warning_8000', 'text') }}"
-icon_color: >
-  {{ state_attr('sensor.tertiary_weather_warning_8000', 'icon_color') }}
-multiline_secondary: true
-visibility:
-  - condition: state_not
-    entity: sensor.tertiary_weather_warning_8000
-    state: "unknown"
-```

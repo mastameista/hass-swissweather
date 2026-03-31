@@ -14,6 +14,7 @@ from homeassistant.data_entry_flow import AbortFlow
 from custom_components.swissweather import config_flow as config_flow_module
 from custom_components.swissweather.config_flow import (
     ConfigFlow,
+    NO_WEATHER_STATION_OPTION,
     NO_POLLEN_STATION_OPTION,
     SEARCH_AGAIN_OPTION,
 )
@@ -275,6 +276,50 @@ def test_details_step_creates_entry_from_public_flow(monkeypatch) -> None:
     assert result["data"][CONF_WARNINGS_ENABLED] is True
 
 
+def test_details_step_creates_entry_without_live_weather_station(monkeypatch) -> None:
+    flow = create_flow()
+    point = create_forecast_point()
+    pollen_station = create_pollen_station()
+    flow._selected_forecast_point_id = point.point_id
+    flow._selected_forecast_point_type = point.point_type_id
+    flow._async_validate_runtime_connectivity = AsyncMock(return_value={})
+
+    monkeypatch.setattr(
+        config_flow_module, "async_get_clientsession", lambda hass: object()
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_forecast_point_list",
+        AsyncMock(return_value=[point]),
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_weather_station_list",
+        AsyncMock(return_value=[create_weather_station()]),
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_pollen_station_list",
+        AsyncMock(return_value=[pollen_station]),
+    )
+
+    result = asyncio.run(
+        flow.async_step_details(
+            {
+                CONF_STATION_CODE: NO_WEATHER_STATION_OPTION,
+                CONF_POLLEN_STATION_CODE: NO_POLLEN_STATION_OPTION,
+                CONF_WARNINGS_ENABLED: True,
+            }
+        )
+    )
+
+    assert result["type"] == "create_entry"
+    assert result["title"] == "MeteoSwiss Bellinzona"
+    assert result["data"][CONF_STATION_CODE] is None
+    assert result["data"][CONF_STATION_NAME] is None
+    assert result["data"][CONF_POLLEN_STATION_CODE] is None
+
+
 def test_reconfigure_step_updates_existing_entry(monkeypatch) -> None:
     flow = create_flow(config_entries.SOURCE_RECONFIGURE)
     entry = SimpleNamespace(
@@ -441,6 +486,65 @@ def test_details_step_reports_cannot_connect_when_forecast_validation_fails(
     assert result["type"] == "form"
     assert result["step_id"] == "details"
     assert result["errors"] == {"base": "cannot_connect"}
+
+
+def test_reconfigure_step_allows_disabling_live_weather_station(monkeypatch) -> None:
+    flow = create_flow(config_entries.SOURCE_RECONFIGURE)
+    entry = SimpleNamespace(
+        unique_id="forecast_650000",
+        data={
+            CONF_POST_CODE: "650000",
+            CONF_FORECAST_NAME: "Bellinzona",
+            CONF_STATION_CODE: "BIA",
+            CONF_STATION_NAME: "Biasca TI",
+            CONF_POLLEN_STATION_CODE: None,
+            CONF_WARNINGS_ENABLED: True,
+        },
+    )
+    flow._get_reconfigure_entry = Mock(return_value=entry)
+    flow.async_update_reload_and_abort = Mock(
+        return_value={"type": "abort", "reason": "reconfigure_successful"}
+    )
+
+    async def _set_unique_id(value: str) -> None:
+        flow.context["unique_id"] = value
+
+    flow.async_set_unique_id = AsyncMock(side_effect=_set_unique_id)
+    flow._async_validate_runtime_connectivity = AsyncMock(return_value={})
+
+    monkeypatch.setattr(
+        config_flow_module, "async_get_clientsession", lambda hass: object()
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_forecast_point_list",
+        AsyncMock(return_value=[create_forecast_point()]),
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_weather_station_list",
+        AsyncMock(return_value=[create_weather_station()]),
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_pollen_station_list",
+        AsyncMock(return_value=[create_pollen_station()]),
+    )
+
+    result = asyncio.run(
+        flow.async_step_reconfigure(
+            {
+                CONF_STATION_CODE: NO_WEATHER_STATION_OPTION,
+                CONF_POLLEN_STATION_CODE: NO_POLLEN_STATION_OPTION,
+                CONF_WARNINGS_ENABLED: True,
+            }
+        )
+    )
+
+    assert result == {"type": "abort", "reason": "reconfigure_successful"}
+    data_updates = flow.async_update_reload_and_abort.call_args.kwargs["data_updates"]
+    assert data_updates[CONF_STATION_CODE] is None
+    assert data_updates[CONF_STATION_NAME] is None
 
 
 def test_ensure_entry_names_keeps_setup_alive_when_metadata_unavailable(monkeypatch):

@@ -19,7 +19,7 @@
         "title": "Prognoseort",
         "description": "Suche einen Prognoseort nach Namen oder gib eine exakte Postleitzahl oder MeteoSwiss-Prognosepunkt-ID ein. Unterstützt werden Postleitzahlen, Orte und Ziele wie Gipfel, Pässe und Hütten. Den ausgewählten Prognoseort bestätigst du im nächsten Schritt.",
         "data_description": {
-          "forecast_query": "Suche nach Ortsname, Postleitzahl oder MeteoSwiss-Prognosepunkt-ID."
+          "forecast_query": "Suche nach Ortsname, Postleitzahl, MeteoSwiss-Prognosepunkt-ID oder Zielen wie Gipfeln, Pässen und Hütten."
         },
         "data": {
           "forecast_query": "Prognoseort suchen"
@@ -29,7 +29,7 @@
         "title": "Stationen",
         "description": "Aktualisiere die Wetter- und Pollenstationen für den bestehenden Prognoseort.",
         "data_description": {
-          "stationCode": "Wähle eine nahe Messstation für Live-Wetterwerte wie Temperatur, Niederschlag, Feuchtigkeit und Wind.",
+          "stationCode": "Wähle eine nahe Live-Wetterstation oder lasse die Auswahl auf No live weather station, wenn du nur forecast-basierte aktuelle Bedingungen möchtest.",
           "pollenStationCode": "Wähle eine Pollenstation für lokale Pollenmesswerte oder lasse sie deaktiviert, wenn du keine Pollen-Entitäten möchtest.",
           "warningsEnabled": "Erstellt Warnungs-Entitäten für den gewählten Prognoseort, inklusive Warnungsanzahl, höchster Stufe und priorisierten Warnungsslots."
         },
@@ -53,7 +53,7 @@
         "title": "Stationen",
         "description": "Wähle die Wetter- und Pollenstationen.",
         "data_description": {
-          "stationCode": "Wähle eine nahe Messstation für Live-Wetterwerte wie Temperatur, Niederschlag, Feuchtigkeit und Wind.",
+          "stationCode": "Wähle eine nahe Live-Wetterstation oder lasse die Auswahl auf No live weather station, wenn du nur forecast-basierte aktuelle Bedingungen möchtest.",
           "pollenStationCode": "Wähle eine Pollenstation für lokale Pollenmesswerte oder lasse sie deaktiviert, wenn du keine Pollen-Entitäten möchtest.",
           "warningsEnabled": "Erstellt Warnungs-Entitäten für den gewählten Prognoseort, inklusive Warnungsanzahl, höchster Stufe und priorisierten Warnungsslots."
         },

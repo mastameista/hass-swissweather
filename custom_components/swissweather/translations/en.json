@@ -19,7 +19,7 @@
         "title": "Forecast Place",
         "description": "Search a forecast place by name, or enter an exact postal code or MeteoSwiss point ID. ZIP codes, locations and points of interest such as peaks, passes and huts are supported. You will confirm the selected forecast place in the next step.",
         "data_description": {
-          "forecast_query": "Search by place name, postal code, or MeteoSwiss forecast point ID."
+          "forecast_query": "Search by place name, postal code, MeteoSwiss forecast point ID, or points of interest such as peaks, passes, and huts."
         },
         "data": {
           "forecast_query": "Forecast place search"
@@ -29,7 +29,7 @@
         "title": "Stations",
         "description": "Update the weather and pollen stations for the existing forecast place.",
         "data_description": {
-          "stationCode": "Choose a nearby measurement station for live weather values such as temperature, precipitation, humidity, and wind.",
+          "stationCode": "Choose a nearby live weather station, or leave it on No live weather station if you only want forecast-based current conditions.",
           "pollenStationCode": "Choose a pollen station for local pollen measurements, or leave it disabled if you do not want pollen entities.",
           "warningsEnabled": "Creates warning entities for the selected forecast place, including warning count, highest level, and prioritized warning slots."
         },
@@ -53,7 +53,7 @@
         "title": "Stations",
         "description": "Choose the weather and pollen stations.",
         "data_description": {
-          "stationCode": "Choose a nearby measurement station for live weather values such as temperature, precipitation, humidity, and wind.",
+          "stationCode": "Choose a nearby live weather station, or leave it on No live weather station if you only want forecast-based current conditions.",
           "pollenStationCode": "Choose a pollen station for local pollen measurements, or leave it disabled if you do not want pollen entities.",
           "warningsEnabled": "Creates warning entities for the selected forecast place, including warning count, highest level, and prioritized warning slots."
         },

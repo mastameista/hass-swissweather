@@ -7,7 +7,11 @@ import pytest
 
 pytest.importorskip("homeassistant")
 
-from custom_components.swissweather.const import CONF_FORECAST_NAME, CONF_POST_CODE
+from custom_components.swissweather.const import (
+    CONF_FORECAST_NAME,
+    CONF_POST_CODE,
+    CONF_STATION_NAME,
+)
 from custom_components.swissweather.coordinator import WarningSnapshot, WeatherData
 from custom_components.swissweather.diagnostics import async_get_config_entry_diagnostics
 from custom_components.swissweather.weather import SwissWeather
@@ -67,3 +71,21 @@ def test_weather_entity_uses_device_name_as_main_feature():
 
     assert entity.name is None
     assert entity.device_info["name"] == "Sevelen"
+
+
+def test_weather_entity_exposes_forecast_and_current_sources():
+    coordinator = SimpleNamespace(data=None)
+    entity = SwissWeather(
+        coordinator,
+        "Sevelen",
+        SimpleNamespace(
+            entry_id="entry-1",
+            data={CONF_POST_CODE: "9475", CONF_STATION_NAME: "Vaduz FL"},
+        ),
+    )
+
+    assert entity.extra_state_attributes == {
+        "forecast_source": "Sevelen",
+        "current_weather_source": "Vaduz FL",
+    }
+    assert entity.attribution == "MeteoSwiss. Forecast: Sevelen. Current weather: Vaduz FL."

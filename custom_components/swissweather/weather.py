@@ -19,7 +19,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import SwissWeatherDataCoordinator
-from .const import CONF_FORECAST_NAME, CONF_POST_CODE, DOMAIN
+from .const import CONF_FORECAST_NAME, CONF_POST_CODE, CONF_STATION_NAME, DOMAIN
 from .meteo import (
     CurrentWeather,
     FloatValue,
@@ -64,9 +64,19 @@ class SwissWeather(CoordinatorEntity[SwissWeatherDataCoordinator], WeatherEntity
             identifiers={(DOMAIN, f"{config_entry.entry_id}-forecast")},
         )
         self._postCode = config_entry.data[CONF_POST_CODE]
+        self._forecast_name = forecast_name
+        self._weather_station_name = config_entry.data.get(CONF_STATION_NAME)
         self._attr_name = None
         self._attr_suggested_object_id = german_slug(forecast_name)
-        self._attr_attribution = "Source: MeteoSwiss"
+        if self._weather_station_name:
+            self._attr_attribution = (
+                f"MeteoSwiss. Forecast: {forecast_name}. "
+                f"Current weather: {self._weather_station_name}."
+            )
+        else:
+            self._attr_attribution = (
+                f"MeteoSwiss. Forecast and current weather: {forecast_name}."
+            )
 
     @property
     def _current_state(self) -> CurrentWeather | None:
@@ -140,6 +150,14 @@ class SwissWeather(CoordinatorEntity[SwissWeatherDataCoordinator], WeatherEntity
     @property
     def native_pressure_unit(self) -> str | None:
         return UnitOfPressure.HPA
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str]:
+        attributes = {"forecast_source": self._forecast_name}
+        attributes["current_weather_source"] = (
+            self._weather_station_name or self._forecast_name
+        )
+        return attributes
 
     @property
     def supported_features(self) -> int | None:
