@@ -32,6 +32,16 @@ Add Swiss Weather integration to Home Assistant. You'll be asked for a few piece
 * **Pollen station code**: The station code of pollen measurement station for pollen data. Same rules apply as before.
 * **Create weather warning entities**: Enables warning entities for the selected forecast place. When enabled, the integration creates `has_warnings`, `warning_count`, `highest_warning_level`, and three prioritized warning slots: `primary`, `secondary`, and `tertiary`.
 
+## Removing the integration
+
+This integration follows standard Home Assistant integration removal.
+
+1. Go to **Settings > Devices & Services > Integrations**
+2. Open **Swiss Weather**
+3. Select **Delete**
+
+If you installed the integration through HACS and no longer want to keep the custom repository installed, remove it from HACS after deleting the integration from Home Assistant.
+
 ### Example Weather Alert mushroom card
 
 Example mushroom cards that show the primary warning first and only reveal secondary / tertiary slots when they currently exist:
