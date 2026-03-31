@@ -1,34 +1,190 @@
 {
   "config": {
-    "step": {
-      "user": {
-        "data_description": {
-          "forecast_query": "Suche nach Ortsname, Postleitzahl oder MeteoSwiss-Prognosepunkt-ID."
-        }
-      },
-      "reconfigure": {
-        "data_description": {
-          "stationCode": "Wähle eine nahe Messstation für Live-Wetterwerte wie Temperatur, Niederschlag, Feuchtigkeit und Wind.",
-          "pollenStationCode": "Wähle eine Pollenstation für lokale Pollenmesswerte oder lasse sie deaktiviert, wenn du keine Pollen-Entitäten möchtest.",
-          "warningsEnabled": "Erstellt Warnungs-Entitäten für den gewählten Prognoseort, inklusive Warnungsanzahl, höchster Stufe und priorisierten Warnungsslots."
-        }
-      },
-      "forecast_pick": {
-        "data_description": {
-          "forecast_point": "Wähle den Prognoseort aus, den du verwenden möchtest, oder wähle \"Erneut suchen\", um die Suche zu verfeinern."
-        }
-      },
-      "details": {
-        "data_description": {
-          "stationCode": "Wähle eine nahe Messstation für Live-Wetterwerte wie Temperatur, Niederschlag, Feuchtigkeit und Wind.",
-          "pollenStationCode": "Wähle eine Pollenstation für lokale Pollenmesswerte oder lasse sie deaktiviert, wenn du keine Pollen-Entitäten möchtest.",
-          "warningsEnabled": "Erstellt Warnungs-Entitäten für den gewählten Prognoseort, inklusive Warnungsanzahl, höchster Stufe und priorisierten Warnungsslots."
-        }
-      }
-    },
     "abort": {
       "already_configured": "Gerät ist bereits konfiguriert",
       "reconfigure_successful": "Die Neukonfiguration war erfolgreich"
+    },
+    "error": {
+      "cannot_connect": "Verbindung fehlgeschlagen",
+      "invalid_auth": "Ungültige Authentifizierung",
+      "unknown": "Unerwarteter Fehler",
+      "forecast_query_required": "Gib einen Suchbegriff für den Prognoseort ein.",
+      "forecast_query_too_short": "Gib mindestens 2 Buchstaben oder eine exakte Postleitzahl bzw. Prognosepunkt-ID ein.",
+      "forecast_query_metadata_unavailable": "Prognoseorte sind momentan nicht verfügbar. Versuche es gleich noch einmal.",
+      "forecast_query_not_found": "Es wurden keine passenden Prognoseorte gefunden.",
+      "invalid_forecast_point": "Wähle einen der passenden Prognoseorte aus."
+    },
+    "step": {
+      "user": {
+        "title": "Prognoseort",
+        "description": "Suche einen Prognoseort nach Namen oder gib eine exakte Postleitzahl oder MeteoSwiss-Prognosepunkt-ID ein. Unterstützt werden Postleitzahlen, Orte und Ziele wie Gipfel, Pässe und Hütten. Den ausgewählten Prognoseort bestätigst du im nächsten Schritt.",
+        "data_description": {
+          "forecast_query": "Suche nach Ortsname, Postleitzahl oder MeteoSwiss-Prognosepunkt-ID."
+        },
+        "data": {
+          "forecast_query": "Prognoseort suchen"
+        }
+      },
+      "reconfigure": {
+        "title": "Stationen",
+        "description": "Aktualisiere die Wetter- und Pollenstationen für den bestehenden Prognoseort.",
+        "data_description": {
+          "stationCode": "Wähle eine nahe Messstation für Live-Wetterwerte wie Temperatur, Niederschlag, Feuchtigkeit und Wind.",
+          "pollenStationCode": "Wähle eine Pollenstation für lokale Pollenmesswerte oder lasse sie deaktiviert, wenn du keine Pollen-Entitäten möchtest.",
+          "warningsEnabled": "Erstellt Warnungs-Entitäten für den gewählten Prognoseort, inklusive Warnungsanzahl, höchster Stufe und priorisierten Warnungsslots."
+        },
+        "data": {
+          "stationCode": "Wetterstation für aktuellen Wetterzustand",
+          "pollenStationCode": "Pollenmessstation",
+          "warningsEnabled": "Wetterwarnungs-Entitäten erstellen"
+        }
+      },
+      "forecast_pick": {
+        "title": "Prognoseort auswählen",
+        "description": "Wähle den Prognoseort, den du verwenden möchtest, oder wähle „Erneut suchen“.",
+        "data_description": {
+          "forecast_point": "Wähle den Prognoseort aus, den du verwenden möchtest, oder wähle „Erneut suchen“, um die Suche zu verfeinern."
+        },
+        "data": {
+          "forecast_point": "Passende Prognoseorte"
+        }
+      },
+      "details": {
+        "title": "Stationen",
+        "description": "Wähle die Wetter- und Pollenstationen.",
+        "data_description": {
+          "stationCode": "Wähle eine nahe Messstation für Live-Wetterwerte wie Temperatur, Niederschlag, Feuchtigkeit und Wind.",
+          "pollenStationCode": "Wähle eine Pollenstation für lokale Pollenmesswerte oder lasse sie deaktiviert, wenn du keine Pollen-Entitäten möchtest.",
+          "warningsEnabled": "Erstellt Warnungs-Entitäten für den gewählten Prognoseort, inklusive Warnungsanzahl, höchster Stufe und priorisierten Warnungsslots."
+        },
+        "data": {
+          "stationCode": "Wetterstation für aktuellen Wetterzustand",
+          "pollenStationCode": "Pollenmessstation",
+          "warningsEnabled": "Wetterwarnungs-Entitäten erstellen"
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "has_warnings": {
+        "name": "Hat Wetterwarnungen"
+      }
+    },
+    "sensor": {
+      "time": {
+        "name": "Zeit"
+      },
+      "temperature": {
+        "name": "Temperatur"
+      },
+      "precipitation": {
+        "name": "Niederschlag"
+      },
+      "sunshine": {
+        "name": "Sonnenschein"
+      },
+      "global_radiation": {
+        "name": "Globalstrahlung"
+      },
+      "humidity": {
+        "name": "Relative Luftfeuchtigkeit"
+      },
+      "dew_point": {
+        "name": "Taupunkt"
+      },
+      "wind_direction": {
+        "name": "Windrichtung"
+      },
+      "wind_speed": {
+        "name": "Windgeschwindigkeit"
+      },
+      "gust_peak1s": {
+        "name": "Windböen Spitze 1 s"
+      },
+      "pressure": {
+        "name": "Luftdruck"
+      },
+      "pressure_qff": {
+        "name": "Luftdruck auf Meereshöhe (QFF)"
+      },
+      "pressure_qnh": {
+        "name": "Luftdruck auf Meereshöhe (QNH)"
+      },
+      "warning_count": {
+        "name": "Anzahl Wetterwarnungen"
+      },
+      "highest_warning_level": {
+        "name": "Höchste Wetterwarnstufe"
+      },
+      "primary_warning": {
+        "name": "Primäre Wetterwarnung"
+      },
+      "secondary_warning": {
+        "name": "Sekundäre Wetterwarnung"
+      },
+      "tertiary_warning": {
+        "name": "Tertiäre Wetterwarnung"
+      },
+      "pollen_time": {
+        "name": "Pollenzeit"
+      },
+      "birch": {
+        "name": "Pollen Birke"
+      },
+      "birch_level": {
+        "name": "Pollenstufe Birke"
+      },
+      "grasses": {
+        "name": "Pollen Gräser"
+      },
+      "grasses_level": {
+        "name": "Pollenstufe Gräser"
+      },
+      "alder": {
+        "name": "Pollen Erle"
+      },
+      "alder_level": {
+        "name": "Pollenstufe Erle"
+      },
+      "hazel": {
+        "name": "Pollen Hasel"
+      },
+      "hazel_level": {
+        "name": "Pollenstufe Hasel"
+      },
+      "beech": {
+        "name": "Pollen Buche"
+      },
+      "beech_level": {
+        "name": "Pollenstufe Buche"
+      },
+      "ash": {
+        "name": "Pollen Esche"
+      },
+      "ash_level": {
+        "name": "Pollenstufe Esche"
+      },
+      "oak": {
+        "name": "Pollen Eiche"
+      },
+      "oak_level": {
+        "name": "Pollenstufe Eiche"
+      }
+    }
+  },
+  "issues": {
+    "missing_forecast_point": {
+      "title": "Der gespeicherte Prognoseort für {entry_title} ist nicht mehr verfügbar",
+      "description": "Die gespeicherte Prognoseort-ID `{post_code}` kann in den neuesten MeteoSwiss-Prognosemetadaten nicht mehr gefunden werden. Entferne den Swiss-Weather-Eintrag und füge ihn erneut hinzu, um einen neuen Prognoseort auszuwählen."
+    },
+    "missing_weather_station": {
+      "title": "Die gespeicherte Wetterstation für {entry_title} ist nicht mehr verfügbar",
+      "description": "Der gespeicherte Wetterstationscode `{station_code}` kann in den neuesten MeteoSwiss-Station-Metadaten nicht mehr gefunden werden. Konfiguriere den Swiss-Weather-Eintrag neu, um eine neue Wetterstation auszuwählen, oder entferne ihn."
+    },
+    "missing_pollen_station": {
+      "title": "Die gespeicherte Pollenstation für {entry_title} ist nicht mehr verfügbar",
+      "description": "Der gespeicherte Pollenstationscode `{station_code}` kann in den neuesten MeteoSwiss-Pollenmetadaten nicht mehr gefunden werden. Konfiguriere den Swiss-Weather-Eintrag neu, um eine neue Pollenstation auszuwählen, oder deaktiviere Pollen für diesen Eintrag."
     }
   }
 }
