@@ -4,6 +4,9 @@
       "user": {
         "title": "Forecast Place",
         "description": "Search a forecast place by name, or enter an exact postal code or MeteoSwiss point ID. ZIP codes, locations and points of interest such as peaks, passes and huts are supported. You will confirm the selected forecast place in the next step.",
+        "data_description": {
+          "forecast_query": "Search by place name, postal code, or MeteoSwiss forecast point ID."
+        },
         "data": {
           "forecast_query": "Forecast place search"
         }
@@ -11,6 +14,11 @@
       "reconfigure": {
         "title": "Stations",
         "description": "Update the weather and pollen stations for the existing forecast place.",
+        "data_description": {
+          "stationCode": "Choose a nearby measurement station for live weather values such as temperature, precipitation, humidity, and wind.",
+          "pollenStationCode": "Choose a pollen station for local pollen measurements, or leave it disabled if you do not want pollen entities.",
+          "warningsEnabled": "Creates warning entities for the selected forecast place, including warning count, highest level, and prioritized warning slots."
+        },
         "data": {
           "stationCode": "Weather station for current weather state",
           "pollenStationCode": "Pollen measuring station",
@@ -20,6 +28,9 @@
       "forecast_pick": {
         "title": "Select Forecast Place",
         "description": "Choose the forecast place you want to use, or select Search again.",
+        "data_description": {
+          "forecast_point": "Select the forecast place you want to use, or choose Search again to refine the query."
+        },
         "data": {
           "forecast_point": "Matching forecast places"
         }
@@ -27,6 +38,11 @@
         "details": {
           "title": "Stations",
           "description": "Choose the weather and pollen stations.",
+          "data_description": {
+            "stationCode": "Choose a nearby measurement station for live weather values such as temperature, precipitation, humidity, and wind.",
+            "pollenStationCode": "Choose a pollen station for local pollen measurements, or leave it disabled if you do not want pollen entities.",
+            "warningsEnabled": "Creates warning entities for the selected forecast place, including warning count, highest level, and prioritized warning slots."
+          },
           "data": {
             "stationCode": "Weather station for current weather state",
             "pollenStationCode": "Pollen measuring station",

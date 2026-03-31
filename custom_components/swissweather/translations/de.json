@@ -1,5 +1,31 @@
 {
   "config": {
+    "step": {
+      "user": {
+        "data_description": {
+          "forecast_query": "Suche nach Ortsname, Postleitzahl oder MeteoSwiss-Prognosepunkt-ID."
+        }
+      },
+      "reconfigure": {
+        "data_description": {
+          "stationCode": "Wähle eine nahe Messstation für Live-Wetterwerte wie Temperatur, Niederschlag, Feuchtigkeit und Wind.",
+          "pollenStationCode": "Wähle eine Pollenstation für lokale Pollenmesswerte oder lasse sie deaktiviert, wenn du keine Pollen-Entitäten möchtest.",
+          "warningsEnabled": "Erstellt Warnungs-Entitäten für den gewählten Prognoseort, inklusive Warnungsanzahl, höchster Stufe und priorisierten Warnungsslots."
+        }
+      },
+      "forecast_pick": {
+        "data_description": {
+          "forecast_point": "Wähle den Prognoseort aus, den du verwenden möchtest, oder wähle \"Erneut suchen\", um die Suche zu verfeinern."
+        }
+      },
+      "details": {
+        "data_description": {
+          "stationCode": "Wähle eine nahe Messstation für Live-Wetterwerte wie Temperatur, Niederschlag, Feuchtigkeit und Wind.",
+          "pollenStationCode": "Wähle eine Pollenstation für lokale Pollenmesswerte oder lasse sie deaktiviert, wenn du keine Pollen-Entitäten möchtest.",
+          "warningsEnabled": "Erstellt Warnungs-Entitäten für den gewählten Prognoseort, inklusive Warnungsanzahl, höchster Stufe und priorisierten Warnungsslots."
+        }
+      }
+    },
     "abort": {
       "already_configured": "Gerät ist bereits konfiguriert",
       "reconfigure_successful": "Die Neukonfiguration war erfolgreich"
