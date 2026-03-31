@@ -22,10 +22,12 @@
         }
       },
       "reconfigure": {
-        "title": "Forecast Place",
-        "description": "Search a forecast place by name, or enter an exact postal code or MeteoSwiss point ID. ZIP codes, locations and points of interest such as peaks, passes and huts are supported. You will confirm the selected forecast place in the next step.",
+        "title": "Stations",
+        "description": "Update the weather and pollen stations for the existing forecast place.",
         "data": {
-          "forecast_query": "Forecast place search"
+          "stationCode": "Weather station for current weather state",
+          "pollenStationCode": "Pollen measuring station",
+          "warningsEnabled": "Create weather warning entities"
         }
       },
       "forecast_pick": {
@@ -157,7 +159,7 @@
   "issues": {
     "missing_forecast_point": {
       "title": "The stored forecast place for {entry_title} is no longer available",
-      "description": "The saved forecast place ID `{post_code}` can no longer be found in the latest MeteoSwiss forecast metadata. Reconfigure the Swiss Weather entry to pick a new forecast place."
+      "description": "The saved forecast place ID `{post_code}` can no longer be found in the latest MeteoSwiss forecast metadata. Remove the Swiss Weather entry and add it again to choose a new forecast place."
     },
     "missing_weather_station": {
       "title": "The stored weather station for {entry_title} is no longer available",

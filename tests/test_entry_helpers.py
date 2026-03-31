@@ -18,7 +18,9 @@ from custom_components.swissweather.__init__ import (
     _async_sync_repairs_issues,
     SwissWeatherMetadata,
     async_migrate_entry,
+    async_remove_config_entry_device,
     async_setup_entry,
+    async_unload_entry,
 )
 from custom_components.swissweather.const import (
     CONF_POLLEN_STATION_CODE,
@@ -629,3 +631,61 @@ def test_sync_repairs_issues_ignores_unconfigured_pollen_station(monkeypatch):
 
     assert created == []
     assert ("swissweather", "missing_pollen_station_entry-4") in deleted
+
+
+def test_async_unload_entry_delegates_to_platform_unload():
+    hass = SimpleNamespace(
+        config_entries=SimpleNamespace(
+            async_unload_platforms=AsyncMock(return_value=True)
+        )
+    )
+    entry = SimpleNamespace(entry_id="entry-1")
+
+    result = asyncio.run(async_unload_entry(hass, entry))
+
+    assert result is True
+    hass.config_entries.async_unload_platforms.assert_awaited_once()
+
+
+def test_async_remove_config_entry_device_rejects_foreign_devices(monkeypatch):
+    from custom_components.swissweather import __init__ as init_module
+
+    monkeypatch.setattr(init_module.er, "async_get", lambda hass: object())
+    monkeypatch.setattr(
+        init_module.er,
+        "async_entries_for_device",
+        lambda registry, device_id, include_disabled_entities=True: [],
+    )
+
+    result = asyncio.run(
+        async_remove_config_entry_device(
+            SimpleNamespace(),
+            SimpleNamespace(entry_id="entry-1"),
+            SimpleNamespace(id="device-1", identifiers={("other", "device-1")}),
+        )
+    )
+
+    assert result is False
+
+
+def test_async_remove_config_entry_device_allows_orphaned_swissweather_devices(
+    monkeypatch,
+):
+    from custom_components.swissweather import __init__ as init_module
+
+    monkeypatch.setattr(init_module.er, "async_get", lambda hass: object())
+    monkeypatch.setattr(
+        init_module.er,
+        "async_entries_for_device",
+        lambda registry, device_id, include_disabled_entities=True: [],
+    )
+
+    result = asyncio.run(
+        async_remove_config_entry_device(
+            SimpleNamespace(),
+            SimpleNamespace(entry_id="entry-1"),
+            SimpleNamespace(id="device-1", identifiers={(DOMAIN, "entry-1-forecast")}),
+        )
+    )
+
+    assert result is True

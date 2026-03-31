@@ -358,7 +358,15 @@ class MeteoClient:
         currentState = self._get_current_state(forecastJson)
         dailyForecast = self._get_daily_forecast(forecastJson)
         hourlyForecast = self._get_hourly_forecast(forecastJson)
-        warnings = self._get_weather_warnings(forecastJson)
+        try:
+            warnings = self._get_weather_warnings(forecastJson)
+        except MeteoSwissDataError as err:
+            logger.warning(
+                "Failed to parse MeteoSwiss warnings for %s; continuing without warnings: %s",
+                postCode,
+                err,
+            )
+            warnings = []
 
         sunrises = None
         sunriseJson = forecastJson.get("graph", {}).get("sunrise", None)

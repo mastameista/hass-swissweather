@@ -80,7 +80,7 @@ _WARNING_ENTITY_SUFFIXES = (
 ISSUE_ID_MISSING_FORECAST_POINT = "missing_forecast_point"
 ISSUE_ID_MISSING_WEATHER_STATION = "missing_weather_station"
 ISSUE_ID_MISSING_POLLEN_STATION = "missing_pollen_station"
-REPAIRS_LEARN_MORE_URL = "https://github.com/mastameista/hass-swissweather"
+REPAIRS_LEARN_MORE_URL = "https://github.com/izacus/hass-swissweather"
 
 
 @dataclass

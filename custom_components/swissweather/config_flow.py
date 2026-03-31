@@ -260,7 +260,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ): bool,
             }
         )
-        return self.async_show_form(step_id="details", data_schema=schema)
+        step_id = "reconfigure" if origin_step == "reconfigure" else "details"
+        return self.async_show_form(step_id=step_id, data_schema=schema)
 
     async def _handle_forecast_search(
         self, origin_step: str, user_input: dict[str, Any]

@@ -9,6 +9,7 @@ import pytest
 pytest.importorskip("homeassistant")
 
 from homeassistant import config_entries
+from homeassistant.data_entry_flow import AbortFlow
 
 from custom_components.swissweather import config_flow as config_flow_module
 from custom_components.swissweather.config_flow import (
@@ -75,6 +76,38 @@ def test_user_step_shows_search_form() -> None:
 
     assert result["type"] == "form"
     assert result["step_id"] == "user"
+
+
+def test_reconfigure_step_shows_station_form(monkeypatch) -> None:
+    flow = create_flow(config_entries.SOURCE_RECONFIGURE)
+    entry = SimpleNamespace(
+        data={
+            CONF_POST_CODE: "650000",
+            CONF_STATION_CODE: "BIA",
+            CONF_POLLEN_STATION_CODE: "BAS",
+            CONF_WARNINGS_ENABLED: True,
+        }
+    )
+    flow._get_reconfigure_entry = Mock(return_value=entry)
+
+    monkeypatch.setattr(
+        config_flow_module, "async_get_clientsession", lambda hass: object()
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_weather_station_list",
+        AsyncMock(return_value=[create_weather_station()]),
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_pollen_station_list",
+        AsyncMock(return_value=[create_pollen_station()]),
+    )
+
+    result = asyncio.run(flow.async_step_reconfigure())
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "reconfigure"
 
 
 def test_user_step_reports_metadata_unavailable(monkeypatch) -> None:
@@ -177,6 +210,23 @@ def test_forecast_pick_selected_point_routes_to_details_form(monkeypatch) -> Non
     flow._abort_if_unique_id_configured.assert_called_once()
 
 
+def test_forecast_pick_aborts_when_point_is_already_configured() -> None:
+    flow = create_flow()
+    point = create_forecast_point()
+    flow._pending_forecast_matches = [point]
+    flow.async_set_unique_id = AsyncMock()
+    flow._abort_if_unique_id_configured = Mock(
+        side_effect=AbortFlow("already_configured")
+    )
+
+    with pytest.raises(AbortFlow, match="already_configured"):
+        asyncio.run(
+            flow.async_step_forecast_pick(
+                {config_flow_module.CONF_FORECAST_POINT: point.point_id}
+            )
+        )
+
+
 def test_details_step_creates_entry_from_public_flow(monkeypatch) -> None:
     flow = create_flow()
     point = create_forecast_point()
@@ -222,6 +272,71 @@ def test_details_step_creates_entry_from_public_flow(monkeypatch) -> None:
     assert result["data"][CONF_STATION_CODE] == weather_station.code
     assert result["data"][CONF_POLLEN_STATION_CODE] is None
     assert result["data"][CONF_WARNINGS_ENABLED] is True
+
+
+def test_reconfigure_step_updates_existing_entry(monkeypatch) -> None:
+    flow = create_flow(config_entries.SOURCE_RECONFIGURE)
+    entry = SimpleNamespace(
+        data={
+            CONF_POST_CODE: "650000",
+            CONF_FORECAST_NAME: "Bellinzona",
+            CONF_STATION_CODE: "OLD",
+            CONF_POLLEN_STATION_CODE: "OLDP",
+            CONF_WARNINGS_ENABLED: True,
+        }
+    )
+    weather_station = create_weather_station()
+    pollen_station = create_pollen_station()
+    flow._get_reconfigure_entry = Mock(return_value=entry)
+    flow._abort_if_unique_id_mismatch = Mock()
+    flow.async_update_reload_and_abort = Mock(
+        return_value={"type": "abort", "reason": "reconfigure_successful"}
+    )
+
+    monkeypatch.setattr(
+        config_flow_module, "async_get_clientsession", lambda hass: object()
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_forecast_point_list",
+        AsyncMock(return_value=[create_forecast_point()]),
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_weather_station_list",
+        AsyncMock(return_value=[weather_station]),
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_pollen_station_list",
+        AsyncMock(return_value=[pollen_station]),
+    )
+
+    result = asyncio.run(
+        flow.async_step_reconfigure(
+            {
+                CONF_STATION_CODE: weather_station.code,
+                CONF_POLLEN_STATION_CODE: NO_POLLEN_STATION_OPTION,
+                CONF_WARNINGS_ENABLED: False,
+            }
+        )
+    )
+
+    assert result == {"type": "abort", "reason": "reconfigure_successful"}
+    flow._abort_if_unique_id_mismatch.assert_called_once()
+    flow.async_update_reload_and_abort.assert_called_once()
+    assert (
+        flow.async_update_reload_and_abort.call_args.kwargs["data_updates"][
+            CONF_STATION_NAME
+        ]
+        == "Biasca TI"
+    )
+    assert (
+        flow.async_update_reload_and_abort.call_args.kwargs["data_updates"][
+            CONF_POLLEN_STATION_CODE
+        ]
+        is None
+    )
 
 
 def test_details_step_formats_pollen_station_like_weather_station(monkeypatch) -> None:
