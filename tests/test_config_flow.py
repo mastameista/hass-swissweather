@@ -234,6 +234,7 @@ def test_details_step_creates_entry_from_public_flow(monkeypatch) -> None:
     pollen_station = create_pollen_station()
     flow._selected_forecast_point_id = point.point_id
     flow._selected_forecast_point_type = point.point_type_id
+    flow._async_validate_runtime_connectivity = AsyncMock(return_value={})
 
     monkeypatch.setattr(
         config_flow_module, "async_get_clientsession", lambda hass: object()
@@ -297,6 +298,7 @@ def test_reconfigure_step_updates_existing_entry(monkeypatch) -> None:
         flow.context["unique_id"] = value
 
     flow.async_set_unique_id = AsyncMock(side_effect=_set_unique_id)
+    flow._async_validate_runtime_connectivity = AsyncMock(return_value={})
 
     monkeypatch.setattr(
         config_flow_module, "async_get_clientsession", lambda hass: object()
@@ -351,6 +353,7 @@ def test_details_step_formats_pollen_station_like_weather_station(monkeypatch) -
     pollen_station = create_pollen_station()
     flow._selected_forecast_point_id = point.point_id
     flow._selected_forecast_point_type = point.point_type_id
+    flow._async_validate_runtime_connectivity = AsyncMock(return_value={})
 
     monkeypatch.setattr(
         config_flow_module, "async_get_clientsession", lambda hass: object()
@@ -385,6 +388,59 @@ def test_details_step_formats_pollen_station_like_weather_station(monkeypatch) -
     assert result["title"] == "MeteoSwiss Bellinzona / Biasca TI / Basel BS"
     assert result["data"][CONF_STATION_NAME] == "Biasca TI"
     assert result["data"][CONF_POLLEN_STATION_NAME] == "Basel BS"
+
+
+def test_details_step_reports_cannot_connect_when_forecast_validation_fails(
+    monkeypatch,
+) -> None:
+    flow = create_flow()
+    point = create_forecast_point()
+    weather_station = create_weather_station()
+    pollen_station = create_pollen_station()
+    flow._selected_forecast_point_id = point.point_id
+    flow._selected_forecast_point_type = point.point_type_id
+
+    monkeypatch.setattr(
+        config_flow_module, "async_get_clientsession", lambda hass: object()
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_forecast_point_list",
+        AsyncMock(return_value=[point]),
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_weather_station_list",
+        AsyncMock(return_value=[weather_station]),
+    )
+    monkeypatch.setattr(
+        config_flow_module,
+        "async_load_pollen_station_list",
+        AsyncMock(return_value=[pollen_station]),
+    )
+
+    class _BrokenMeteoClient:
+        def __init__(self, session) -> None:
+            self._session = session
+
+        async def async_get_forecast(self, post_code, forecast_point_type=None):
+            raise config_flow_module.MeteoSwissConnectionError("boom")
+
+    monkeypatch.setattr(config_flow_module, "MeteoClient", _BrokenMeteoClient)
+
+    result = asyncio.run(
+        flow.async_step_details(
+            {
+                CONF_STATION_CODE: weather_station.code,
+                CONF_POLLEN_STATION_CODE: NO_POLLEN_STATION_OPTION,
+                CONF_WARNINGS_ENABLED: True,
+            }
+        )
+    )
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "details"
+    assert result["errors"] == {"base": "cannot_connect"}
 
 
 def test_ensure_entry_names_keeps_setup_alive_when_metadata_unavailable(monkeypatch):

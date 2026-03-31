@@ -36,6 +36,7 @@ from .forecast_points import (
     format_forecast_point_label,
     search_forecast_points,
 )
+from .meteo import MeteoClient, MeteoSwissConnectionError, MeteoSwissDataError
 from .naming import (
     build_entry_title,
     build_entry_unique_id,
@@ -162,6 +163,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return await self._show_details_form(self._active_step_id())
 
         resolved_data = await self._augment_entry_data(user_input, self._selected_forecast_point_id)
+        errors = await self._async_validate_runtime_connectivity(resolved_data)
+        if errors:
+            return await self._show_details_form(
+                self._active_step_id(),
+                user_input=user_input,
+                errors=errors,
+            )
         if self.source == config_entries.SOURCE_RECONFIGURE:
             reconfigure_entry = self._get_reconfigure_entry()
             return self.async_update_reload_and_abort(
@@ -214,6 +222,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self,
         origin_step: str,
         *,
+        errors: dict[str, str] | None = None,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
         """Show the second step with station and pollen options."""
@@ -266,7 +275,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }
         )
         step_id = "reconfigure" if origin_step == "reconfigure" else "details"
-        return self.async_show_form(step_id=step_id, data_schema=schema)
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=schema,
+            errors=errors or {},
+        )
 
     async def _handle_forecast_search(
         self, origin_step: str, user_input: dict[str, Any]
@@ -466,3 +479,26 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         resolved_data.pop(CONF_FORECAST_QUERY, None)
         resolved_data.pop(CONF_FORECAST_POINT, None)
         return resolved_data
+
+    async def _async_validate_runtime_connectivity(
+        self, resolved_data: dict[str, Any]
+    ) -> dict[str, str]:
+        """Validate that the selected forecast place can be fetched live."""
+        client = MeteoClient(async_get_clientsession(self.hass))
+        try:
+            forecast = await client.async_get_forecast(
+                resolved_data[CONF_POST_CODE],
+                resolved_data.get(CONF_FORECAST_POINT_TYPE),
+            )
+        except MeteoSwissConnectionError:
+            return {"base": "cannot_connect"}
+        except MeteoSwissDataError:
+            return {"base": "unknown"}
+        except Exception:
+            _LOGGER.exception("Unexpected forecast validation failure during config flow")
+            return {"base": "unknown"}
+
+        if forecast is None:
+            return {"base": "cannot_connect"}
+
+        return {}
