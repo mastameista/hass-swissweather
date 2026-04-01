@@ -498,7 +498,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, resolved_data: dict[str, Any]
     ) -> dict[str, str]:
         """Validate that the selected forecast place can be fetched live."""
-        client = MeteoClient(async_get_clientsession(self.hass))
+        client = MeteoClient(
+            async_get_clientsession(self.hass),
+            getattr(getattr(self.hass, "config", None), "language", None),
+        )
         try:
             forecast = await client.async_get_forecast(
                 resolved_data[CONF_POST_CODE],

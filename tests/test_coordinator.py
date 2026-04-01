@@ -16,15 +16,17 @@ from custom_components.swissweather.pollen import PollenDataError
 
 
 class FakeHass:
-    pass
+    def __init__(self, language: str = "en") -> None:
+        self.config = SimpleNamespace(language=language)
 
 
 def test_weather_coordinator_fails_when_forecast_missing(monkeypatch):
     from custom_components.swissweather import coordinator as coordinator_module
 
     class _FakeMeteoClient:
-        def __init__(self, session):
+        def __init__(self, session, language="en"):
             self.session = session
+            self.language = language
 
         async def async_get_current_weather_for_station(self, station_code):
             return None
@@ -57,8 +59,9 @@ def test_weather_coordinator_uses_forecast_current_as_fallback(monkeypatch):
     )
 
     class _FakeMeteoClient:
-        def __init__(self, session):
+        def __init__(self, session, language="en"):
             self.session = session
+            self.language = language
 
         async def async_get_current_weather_for_station(self, station_code):
             raise RuntimeError("weather station offline")
@@ -96,8 +99,9 @@ def test_weather_coordinator_logs_station_outage_once_and_recovery(monkeypatch, 
     station_results = [RuntimeError("dns"), RuntimeError("dns"), object()]
 
     class _FakeMeteoClient:
-        def __init__(self, session):
+        def __init__(self, session, language="en"):
             self.session = session
+            self.language = language
 
         async def async_get_current_weather_for_station(self, station_code):
             del station_code
@@ -149,8 +153,9 @@ def test_weather_coordinator_classifies_forecast_connection_errors(monkeypatch):
     from custom_components.swissweather import coordinator as coordinator_module
 
     class _FakeMeteoClient:
-        def __init__(self, session):
+        def __init__(self, session, language="en"):
             self.session = session
+            self.language = language
 
         async def async_get_current_weather_for_station(self, station_code):
             return None
@@ -200,8 +205,9 @@ def test_weather_coordinator_classifies_invalid_warning_payload(monkeypatch):
     from custom_components.swissweather import coordinator as coordinator_module
 
     class _FakeMeteoClient:
-        def __init__(self, session):
+        def __init__(self, session, language="en"):
             self.session = session
+            self.language = language
 
         async def async_get_current_weather_for_station(self, station_code):
             return None
@@ -221,3 +227,18 @@ def test_weather_coordinator_classifies_invalid_warning_payload(monkeypatch):
 
     with pytest.raises(UpdateFailed, match="invalid forecast payload"):
         asyncio.run(coordinator._async_update_data())
+
+
+def test_weather_coordinator_normalizes_hass_language(monkeypatch):
+    from custom_components.swissweather import coordinator as coordinator_module
+
+    monkeypatch.setattr(
+        coordinator_module, "async_get_clientsession", lambda hass: object()
+    )
+
+    coordinator = SwissWeatherDataCoordinator(
+        FakeHass(language="de-CH"),
+        SimpleNamespace(data={CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"}),
+    )
+
+    assert coordinator._client.language == "de"

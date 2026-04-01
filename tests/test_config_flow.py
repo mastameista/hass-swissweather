@@ -36,7 +36,7 @@ from custom_components.swissweather.station_lookup import WeatherStation
 
 class FakeHass:
     def __init__(self) -> None:
-        self.config = SimpleNamespace(latitude=47.0, longitude=8.0)
+        self.config = SimpleNamespace(latitude=47.0, longitude=8.0, language="en")
 
 
 def create_flow(
@@ -465,8 +465,9 @@ def test_details_step_reports_cannot_connect_when_forecast_validation_fails(
     )
 
     class _BrokenMeteoClient:
-        def __init__(self, session) -> None:
+        def __init__(self, session, language="en") -> None:
             self._session = session
+            self.language = language
 
         async def async_get_forecast(self, post_code, forecast_point_type=None):
             raise config_flow_module.MeteoSwissConnectionError("boom")
@@ -721,6 +722,41 @@ def test_meteo_client_returns_none_when_station_csv_unavailable():
                 _BrokenSession()
             ).async_get_current_weather_for_all_stations()
         )
+
+
+def test_meteo_client_normalizes_locale_language_tags():
+    from custom_components.swissweather import meteo
+
+    client = meteo.MeteoClient(object(), "fr-CH")
+    assert client.language == "fr"
+
+    fallback_client = meteo.MeteoClient(object(), "es-ES")
+    assert fallback_client.language == "en"
+
+
+def test_runtime_connectivity_validation_uses_hass_language(monkeypatch) -> None:
+    flow = create_flow()
+    flow.hass.config.language = "it-CH"
+    captured: dict[str, str] = {}
+
+    class _FakeMeteoClient:
+        def __init__(self, session, language="en") -> None:
+            captured["language"] = language
+
+        async def async_get_forecast(self, post_code, forecast_point_type=None):
+            return object()
+
+    monkeypatch.setattr(
+        config_flow_module, "async_get_clientsession", lambda hass: object()
+    )
+    monkeypatch.setattr(config_flow_module, "MeteoClient", _FakeMeteoClient)
+
+    result = asyncio.run(
+        flow._async_validate_runtime_connectivity({CONF_POST_CODE: "650000"})
+    )
+
+    assert result == {}
+    assert captured["language"] == "it-CH"
 
 
 def test_pollen_client_returns_none_on_json_failure():

@@ -20,6 +20,8 @@ CURRENT_CONDITION_URL = (
 )
 FORECAST_URL = "https://app-prod-ws.meteoswiss-app.ch/v2/plzDetail?plz={}"
 FORECAST_USER_AGENT = "android-31 ch.admin.meteoswiss-2160000"
+DEFAULT_LANGUAGE = "en"
+SUPPORTED_LANGUAGES = frozenset({"de", "en", "fr", "it"})
 
 CONDITION_CLASSES = {
     "clear-night": [101],
@@ -78,6 +80,17 @@ def to_int(string: str) -> int | None:
     except ValueError:
         logger.error("Failed to convert value %s", string, exc_info=True)
         return None
+
+
+def normalize_language_tag(language: str | None) -> str:
+    """Normalize Home Assistant locale tags to MeteoSwiss-supported languages."""
+    if not language:
+        return DEFAULT_LANGUAGE
+
+    normalized = language.replace("_", "-").split("-", 1)[0].lower()
+    if normalized in SUPPORTED_LANGUAGES:
+        return normalized
+    return DEFAULT_LANGUAGE
 
 
 FloatValue = NewType("FloatValue", tuple[float | None, str | None])
@@ -292,12 +305,17 @@ def parse_warning_level(value: int | None) -> WarningLevel:
 
 
 class MeteoClient:
-    language: str = "en"
+    """Client for MeteoSwiss weather data.
 
-    def __init__(self, session: ClientSession, language: str = "en"):
+    MeteoSwiss currently supports the languages ``de``, ``en``, ``fr``, and ``it``.
+    """
+
+    language: str = DEFAULT_LANGUAGE
+
+    def __init__(self, session: ClientSession, language: str = DEFAULT_LANGUAGE):
         """Initialize the MeteoSwiss client."""
         self._session = session
-        self.language = language
+        self.language = normalize_language_tag(language)
 
     async def async_get_current_weather_for_all_stations(
         self,

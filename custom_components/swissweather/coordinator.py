@@ -110,7 +110,10 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
         self._post_code = config_entry.data[CONF_POST_CODE]
         self._forecast_point_type = config_entry.data.get(CONF_FORECAST_POINT_TYPE)
         self._current_station_unavailable = False
-        self._client = MeteoClient(async_get_clientsession(hass))
+        self._client = MeteoClient(
+            async_get_clientsession(hass),
+            getattr(getattr(hass, "config", None), "language", None),
+        )
         update_interval = timedelta(minutes=10)
         super().__init__(
             hass,
