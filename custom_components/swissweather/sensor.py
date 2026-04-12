@@ -313,7 +313,7 @@ class SwissWeatherWarningCountSensor(
 
     @cached_property
     def icon(self):
-        return "mdi:alert-badge-outline"
+        return "mdi:alert-plus-outline"
 
 
 class SwissWeatherHighestWarningLevelSensor(
