@@ -35,7 +35,12 @@ from .forecast_points import (
     format_forecast_point_label,
     search_forecast_points,
 )
-from .naming import build_entry_title, format_station_display_name
+from .meteo import MeteoClient
+from .naming import (
+    build_entry_title,
+    build_entry_unique_id,
+    format_station_display_name,
+)
 from .station_lookup import (
     WeatherStation,
     find_station_by_code,
@@ -67,6 +72,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._selected_forecast_name: str | None = None
         self._last_forecast_query: str = ""
         self._forecast_points_cache: list[Any] | None = None
+        self._weather_stations_cache: list[WeatherStation] | None = None
+        self._pollen_stations_cache: list[WeatherStation] | None = None
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -115,6 +122,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     selected_point.point_type_id,
                     selected_point.display_name,
                 )
+                unique_id = build_entry_unique_id(selected_point.point_id)
+                if unique_id is not None:
+                    await self.async_set_unique_id(unique_id)
+                    self._abort_if_unique_id_configured()
                 return await self._show_details_form(self._active_step_id())
             errors[CONF_FORECAST_POINT] = "invalid_forecast_point"
 
@@ -148,7 +159,16 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is None:
             return await self._show_details_form(self._active_step_id())
 
-        resolved_data = await self._augment_entry_data(user_input, self._selected_forecast_point_id)
+        resolved_data = await self._augment_entry_data(
+            user_input, self._selected_forecast_point_id
+        )
+        errors = await self._async_validate_runtime_connectivity(resolved_data)
+        if errors:
+            return await self._show_details_form(
+                self._active_step_id(),
+                user_input=user_input,
+                errors=errors,
+            )
         if self.source == config_entries.SOURCE_RECONFIGURE:
             reconfigure_entry = self._get_reconfigure_entry()
             return self.async_update_reload_and_abort(
@@ -201,6 +221,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self,
         origin_step: str,
         *,
+        errors: dict[str, str] | None = None,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
         """Show the second step with station and pollen options."""
@@ -251,7 +272,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ): int,
             }
         )
-        return self.async_show_form(step_id="details", data_schema=schema)
+        step_id = "reconfigure" if origin_step == "reconfigure" else "details"
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=schema,
+            errors=errors or {},
+        )
 
     async def _handle_forecast_search(
         self, origin_step: str, user_input: dict[str, Any]
@@ -274,12 +300,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         try:
             forecast_points = await self._async_get_forecast_points()
         except ForecastPointMetadataLoadError:
+            _LOGGER.warning("Forecast-point metadata unavailable during config flow")
             return await self._show_forecast_search_form(
                 origin_step,
                 errors={CONF_FORECAST_QUERY: "forecast_query_metadata_unavailable"},
                 user_input=user_input,
             )
-
         matches = search_forecast_points(forecast_points, query)
         if not matches:
             return await self._show_forecast_search_form(
@@ -317,7 +343,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _get_weather_station_options(self) -> list[SelectOptionDict]:
         """Load weather station options for the dropdown."""
-        stations = await self.hass.async_add_executor_job(load_weather_station_list)
+        stations = await self._async_get_weather_stations()
         if self.hass.config.latitude is not None and self.hass.config.longitude is not None:
             stations = sorted(stations, key=lambda item: self._get_distance_to_station(item))
         return [
@@ -333,7 +359,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _get_pollen_station_options(self) -> list[SelectOptionDict]:
         """Load pollen station options for the dropdown."""
-        pollen_stations = await self.hass.async_add_executor_job(load_pollen_station_list)
+        pollen_stations = await self._async_get_pollen_stations()
         if self.hass.config.latitude is not None and self.hass.config.longitude is not None:
             pollen_stations = sorted(
                 pollen_stations, key=lambda item: self._get_distance_to_station(item)
@@ -366,6 +392,22 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
         return self._forecast_points_cache
 
+    async def _async_get_weather_stations(self) -> list[WeatherStation]:
+        """Load weather-station metadata once per flow instance."""
+        if self._weather_stations_cache is None:
+            self._weather_stations_cache = await self.hass.async_add_executor_job(
+                load_weather_station_list
+            )
+        return self._weather_stations_cache
+
+    async def _async_get_pollen_stations(self) -> list[WeatherStation]:
+        """Load pollen-station metadata once per flow instance."""
+        if self._pollen_stations_cache is None:
+            self._pollen_stations_cache = await self.hass.async_add_executor_job(
+                load_pollen_station_list
+            )
+        return self._pollen_stations_cache
+
     async def _augment_entry_data(
         self,
         user_input: dict[str, Any],
@@ -381,8 +423,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         resolved_data[CONF_POST_CODE] = str(post_code).strip() if post_code is not None else None
 
         forecast_points = await self._async_get_forecast_points()
-        weather_stations = await self.hass.async_add_executor_job(load_weather_station_list)
-        pollen_stations = await self.hass.async_add_executor_job(load_pollen_station_list)
+        weather_stations = await self._async_get_weather_stations()
+        pollen_stations = await self._async_get_pollen_stations()
         station_code = user_input.get(CONF_STATION_CODE)
         pollen_station_code = user_input.get(CONF_POLLEN_STATION_CODE)
 
@@ -439,3 +481,23 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         resolved_data.pop(CONF_FORECAST_POINT, None)
         return resolved_data
 
+    async def _async_validate_runtime_connectivity(
+        self, resolved_data: dict[str, Any]
+    ) -> dict[str, str]:
+        """Validate the selected forecast point before persisting the entry."""
+        try:
+            client = MeteoClient(
+                getattr(getattr(self.hass, "config", None), "language", "en")
+            )
+            forecast = await self.hass.async_add_executor_job(
+                client.get_forecast,
+                resolved_data[CONF_POST_CODE],
+                resolved_data.get(CONF_FORECAST_POINT_TYPE),
+            )
+        except Exception:
+            _LOGGER.exception("Unexpected forecast validation failure during config flow")
+            return {"base": "unknown"}
+
+        if forecast is None:
+            return {"base": "cannot_connect"}
+        return {}
