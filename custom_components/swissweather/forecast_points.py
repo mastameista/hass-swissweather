@@ -16,7 +16,7 @@ _LOGGER = logging.getLogger(__name__)
 
 FORECAST_POINT_LIST_URL = (
     "https://data.geo.admin.ch/ch.meteoschweiz.ogd-local-forecasting/"
-    "ogd-local-forcasting_meta_point.csv"
+    "ogd-local-forecasting_meta_point.csv"
 )
 
 SUPPORTED_FORECAST_POINT_TYPES = {"2", "3"}
