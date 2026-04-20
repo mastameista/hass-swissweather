@@ -37,7 +37,7 @@ from .forecast_points import (
     format_forecast_point_label,
     search_forecast_points,
 )
-from .meteo import MeteoClient
+from .meteo import MeteoClient, MeteoSwissConnectionError, MeteoSwissDataError
 from .naming import (
     build_entry_title,
     build_entry_unique_id,
@@ -46,10 +46,11 @@ from .naming import (
 from .station_lookup import (
     WeatherStation,
     find_station_by_code,
-    load_pollen_station_list,
-    load_weather_station_list,
+    async_load_pollen_station_list,
+    async_load_weather_station_list,
     split_place_and_canton,
 )
+from .pollen import PollenClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -418,16 +419,16 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _async_get_weather_stations(self) -> list[WeatherStation]:
         """Load weather-station metadata once per flow instance."""
         if self._weather_stations_cache is None:
-            self._weather_stations_cache = await self.hass.async_add_executor_job(
-                load_weather_station_list
+            self._weather_stations_cache = await async_load_weather_station_list(
+                async_get_clientsession(self.hass)
             )
         return self._weather_stations_cache
 
     async def _async_get_pollen_stations(self) -> list[WeatherStation]:
         """Load pollen-station metadata once per flow instance."""
         if self._pollen_stations_cache is None:
-            self._pollen_stations_cache = await self.hass.async_add_executor_job(
-                load_pollen_station_list
+            self._pollen_stations_cache = await async_load_pollen_station_list(
+                PollenClient(async_get_clientsession(self.hass))
             )
         return self._pollen_stations_cache
 
@@ -515,13 +516,17 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Validate the selected forecast point before persisting the entry."""
         try:
             client = MeteoClient(
-                getattr(getattr(self.hass, "config", None), "language", "en")
+                async_get_clientsession(self.hass),
+                getattr(getattr(self.hass, "config", None), "language", None),
             )
-            forecast = await self.hass.async_add_executor_job(
-                client.get_forecast,
+            forecast = await client.async_get_forecast(
                 resolved_data[CONF_POST_CODE],
                 resolved_data.get(CONF_FORECAST_POINT_TYPE),
             )
+        except MeteoSwissConnectionError:
+            return {"base": "cannot_connect"}
+        except MeteoSwissDataError:
+            return {"base": "unknown"}
         except Exception:
             _LOGGER.exception("Unexpected forecast validation failure during config flow")
             return {"base": "unknown"}

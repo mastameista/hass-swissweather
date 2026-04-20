@@ -9,6 +9,7 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
@@ -18,8 +19,21 @@ from .const import (
     CONF_STATION_CODE,
     DOMAIN,
 )
-from .meteo import CurrentWeather, MeteoClient, Warning, WarningLevel, WeatherForecast
-from .pollen import CurrentPollen, PollenClient
+from .meteo import (
+    CurrentWeather,
+    MeteoClient,
+    MeteoSwissConnectionError,
+    MeteoSwissDataError,
+    Warning,
+    WarningLevel,
+    WeatherForecast,
+)
+from .pollen import (
+    CurrentPollen,
+    PollenClient,
+    PollenConnectionError,
+    PollenDataError,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -95,7 +109,11 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
         self._station_code = config_entry.data.get(CONF_STATION_CODE)
         self._post_code = config_entry.data[CONF_POST_CODE]
         self._forecast_point_type = config_entry.data.get(CONF_FORECAST_POINT_TYPE)
-        self._client = MeteoClient()
+        self._current_station_unavailable = False
+        self._client = MeteoClient(
+            async_get_clientsession(hass),
+            getattr(getattr(hass, "config", None), "language", None),
+        )
         update_interval = timedelta(minutes=10)
         super().__init__(
             hass,
@@ -106,28 +124,68 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
             config_entry=config_entry,
         )
 
+    def _handle_current_station_failure(self, details: str | None = None) -> None:
+        """Log current station outages once and degrade to forecast fallback."""
+        if self._station_code is None:
+            return
+        if not self._current_station_unavailable:
+            if details:
+                _LOGGER.warning(
+                    "Current weather state for %s unavailable; using forecast fallback: %s",
+                    self._station_code,
+                    details,
+                )
+            else:
+                _LOGGER.warning(
+                    "Current weather state for %s unavailable; using forecast fallback",
+                    self._station_code,
+                )
+            self._current_station_unavailable = True
+            return
+        _LOGGER.debug(
+            "Current weather state for %s is still unavailable",
+            self._station_code,
+        )
+
+    def _handle_current_station_recovery(self) -> None:
+        """Log when the current station recovers after an outage."""
+        if self._station_code is None or not self._current_station_unavailable:
+            return
+        _LOGGER.info("Current weather state for %s recovered", self._station_code)
+        self._current_station_unavailable = False
+
     async def _async_update_data(self) -> WeatherData:
         current_state: CurrentWeather | None = None
         if self._station_code is None:
-            _LOGGER.warning("Station code not set, not loading current state.")
+            _LOGGER.debug("Station code not set, not loading current state.")
         else:
-            _LOGGER.info("Loading current weather state for %s", self._station_code)
+            _LOGGER.debug("Loading current weather state for %s", self._station_code)
             try:
-                current_state = await self.hass.async_add_executor_job(
-                    self._client.get_current_weather_for_station, self._station_code
+                current_state = await self._client.async_get_current_weather_for_station(
+                    self._station_code
                 )
                 _LOGGER.debug("Current state: %s", current_state)
+                if current_state is None:
+                    self._handle_current_station_failure("no station data returned")
+                else:
+                    self._handle_current_station_recovery()
+            except (MeteoSwissConnectionError, MeteoSwissDataError) as err:
+                self._handle_current_station_failure(str(err))
+                current_state = None
             except Exception as err:
-                _LOGGER.exception(err)
+                self._handle_current_station_failure(type(err).__name__)
                 current_state = None
 
         try:
-            _LOGGER.info("Loading current forecast for %s", self._post_code)
-            current_forecast = await self.hass.async_add_executor_job(
-                self._client.get_forecast,
+            _LOGGER.debug("Loading current forecast for %s", self._post_code)
+            current_forecast = await self._client.async_get_forecast(
                 self._post_code,
                 self._forecast_point_type,
             )
+            if current_forecast is None:
+                raise UpdateFailed(
+                    f"No forecast data returned for forecast point {self._post_code}"
+                )
             _LOGGER.debug("Current forecast: %s", current_forecast)
             if current_state is None and current_forecast is not None:
                 current = current_forecast.current
@@ -151,8 +209,17 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
             snapshot = build_warning_snapshot(
                 None if current_forecast is None else current_forecast.warnings
             )
+        except MeteoSwissConnectionError as err:
+            raise UpdateFailed(
+                f"Could not reach MeteoSwiss forecast endpoint: {err}"
+            ) from err
+        except MeteoSwissDataError as err:
+            raise UpdateFailed(
+                f"MeteoSwiss returned an invalid forecast payload: {err}"
+            ) from err
+        except UpdateFailed:
+            raise
         except Exception as err:
-            _LOGGER.exception(err)
             raise UpdateFailed(f"Update failed: {err}") from err
 
         return WeatherData(
@@ -169,7 +236,7 @@ class SwissPollenDataCoordinator(DataUpdateCoordinator[CurrentPollen | None]):
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
         self._pollen_station_code = config_entry.data.get(CONF_POLLEN_STATION_CODE)
-        self._client = PollenClient()
+        self._client = PollenClient(async_get_clientsession(hass))
         update_interval = timedelta(minutes=60)
         super().__init__(
             hass,
@@ -185,14 +252,20 @@ class SwissPollenDataCoordinator(DataUpdateCoordinator[CurrentPollen | None]):
         if self._pollen_station_code is None:
             _LOGGER.debug("Pollen code not set, not loading current state.")
         else:
-            _LOGGER.info("Loading current pollen state for %s", self._pollen_station_code)
+            _LOGGER.debug("Loading current pollen state for %s", self._pollen_station_code)
             try:
-                current_state = await self.hass.async_add_executor_job(
-                    self._client.get_current_pollen_for_station,
+                current_state = await self._client.async_get_current_pollen_for_station(
                     self._pollen_station_code,
                 )
                 _LOGGER.debug("Current pollen: %s", current_state)
+            except PollenConnectionError as err:
+                raise UpdateFailed(
+                    f"Could not reach MeteoSwiss pollen endpoint: {err}"
+                ) from err
+            except PollenDataError as err:
+                raise UpdateFailed(
+                    f"MeteoSwiss returned an invalid pollen payload: {err}"
+                ) from err
             except Exception as err:
-                _LOGGER.exception(err)
                 raise UpdateFailed(f"Update failed: {err}") from err
         return current_state
