@@ -20,6 +20,10 @@ from custom_components.swissweather.station_lookup import WeatherStation
 class FakeHass:
     def __init__(self) -> None:
         self.config = SimpleNamespace(latitude=47.0, longitude=8.0, language="en")
+        self.config_entries = SimpleNamespace(
+            async_entries=lambda *args, **kwargs: [],
+            async_update_entry=Mock(),
+        )
 
     async def async_add_executor_job(self, target, *args):
         return target(*args)
@@ -57,6 +61,7 @@ def create_pollen_station() -> WeatherStation:
 def test_user_step_reports_metadata_unavailable(monkeypatch) -> None:
     flow = create_flow()
 
+    monkeypatch.setattr(config_flow_module, "async_get_clientsession", Mock(return_value=object()))
     monkeypatch.setattr(
         config_flow_module,
         "async_load_forecast_point_list",
@@ -111,6 +116,71 @@ def test_forecast_pick_aborts_when_selected_point_already_configured() -> None:
             )
         )
 
+
+def test_forecast_pick_aborts_when_legacy_entry_uses_same_forecast_point() -> None:
+    flow = create_flow()
+    point = create_forecast_point()
+    flow._pending_forecast_matches = [point]
+    flow.async_set_unique_id = AsyncMock()
+    flow._abort_if_unique_id_configured = Mock()
+    flow._async_current_entries = Mock(
+        return_value=[
+            SimpleNamespace(
+                entry_id="legacy-entry",
+                data={config_flow_module.CONF_POST_CODE: point.point_id},
+            )
+        ]
+    )
+
+    with pytest.raises(AbortFlow, match="already_configured"):
+        asyncio.run(
+            flow.async_step_forecast_pick(
+                {config_flow_module.CONF_FORECAST_POINT: point.point_id}
+            )
+        )
+
+
+def test_reconfigure_sets_existing_unique_id_before_showing_form() -> None:
+    flow = create_flow(config_entries.SOURCE_RECONFIGURE)
+    flow.async_set_unique_id = AsyncMock()
+    flow._get_reconfigure_entry = Mock(
+        return_value=SimpleNamespace(
+            unique_id="swissweather_650000",
+            data={config_flow_module.CONF_POST_CODE: "650000"},
+        )
+    )
+    flow._show_details_form = AsyncMock(
+        return_value={"type": "form", "step_id": "reconfigure"}
+    )
+
+    result = asyncio.run(flow.async_step_reconfigure())
+
+    assert result["step_id"] == "reconfigure"
+    flow.async_set_unique_id.assert_awaited_once_with("swissweather_650000")
+
+
+def test_reconfigure_builds_unique_id_from_post_code_when_missing() -> None:
+    flow = create_flow(config_entries.SOURCE_RECONFIGURE)
+    flow.async_set_unique_id = AsyncMock()
+    flow._get_reconfigure_entry = Mock(
+        return_value=SimpleNamespace(
+            unique_id=None,
+            data={config_flow_module.CONF_POST_CODE: "650000"},
+        )
+    )
+    flow._show_details_form = AsyncMock(
+        return_value={"type": "form", "step_id": "reconfigure"}
+    )
+
+    result = asyncio.run(flow.async_step_reconfigure())
+
+    assert result["step_id"] == "reconfigure"
+    flow.hass.config_entries.async_update_entry.assert_called_once_with(
+        flow._get_reconfigure_entry.return_value, unique_id="swissweather_650000"
+    )
+    flow.async_set_unique_id.assert_awaited_once_with("swissweather_650000")
+
+
 def test_details_step_shows_form_again_when_connectivity_validation_fails() -> None:
     flow = create_flow()
     flow._selected_forecast_point_id = "650000"
@@ -153,6 +223,7 @@ def test_metadata_helpers_are_cached_per_flow(monkeypatch) -> None:
     weather_loader = Mock(return_value=[create_weather_station()])
     pollen_loader = Mock(return_value=[create_pollen_station()])
 
+    monkeypatch.setattr(config_flow_module, "async_get_clientsession", Mock(return_value=object()))
     monkeypatch.setattr(
         config_flow_module, "async_load_forecast_point_list", forecast_loader
     )

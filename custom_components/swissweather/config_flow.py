@@ -8,6 +8,7 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
+from homeassistant.data_entry_flow import AbortFlow
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     SelectOptionDict,
@@ -88,10 +89,22 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle config entry reconfiguration."""
+        reconfigure_entry = self._get_reconfigure_entry()
+        reconfigure_unique_id = getattr(reconfigure_entry, "unique_id", None)
+        if reconfigure_unique_id is None and reconfigure_entry is not None:
+            reconfigure_unique_id = build_entry_unique_id(
+                reconfigure_entry.data.get(CONF_POST_CODE)
+            )
+            if reconfigure_unique_id is not None:
+                self.hass.config_entries.async_update_entry(
+                    reconfigure_entry, unique_id=reconfigure_unique_id
+                )
+        if reconfigure_unique_id is not None:
+            await self.async_set_unique_id(reconfigure_unique_id)
+
         if user_input is None:
             return await self._show_details_form("reconfigure")
 
-        self._abort_if_unique_id_mismatch()
         return await self.async_step_details(user_input)
 
     async def async_step_forecast_pick(
@@ -126,6 +139,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 if unique_id is not None:
                     await self.async_set_unique_id(unique_id)
                     self._abort_if_unique_id_configured()
+                self._abort_if_forecast_point_already_configured(selected_point.point_id)
                 return await self._show_details_form(self._active_step_id())
             errors[CONF_FORECAST_POINT] = "invalid_forecast_point"
 
@@ -333,6 +347,16 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if self.source == config_entries.SOURCE_RECONFIGURE:
             return "reconfigure"
         return "user"
+
+    def _abort_if_forecast_point_already_configured(self, point_id: str) -> None:
+        """Abort if a legacy entry without unique_id already uses this forecast point."""
+        normalized_point_id = str(point_id).strip()
+        for entry in self._async_current_entries():
+            if entry.data.get(CONF_POST_CODE) != normalized_point_id:
+                continue
+            if entry.entry_id == self.context.get("entry_id"):
+                continue
+            raise AbortFlow("already_configured")
 
     def format_station_name_for_dropdown(self, station: WeatherStation) -> str:
         """Format a weather/pollen station option for the dropdown."""
