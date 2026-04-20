@@ -9,7 +9,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 
-from . import SwissWeatherDataCoordinator, get_weather_coordinator_key
+from . import SwissWeatherDataCoordinator
 from .const import CONF_FORECAST_NAME, CONF_POST_CODE, CONF_WARNINGS_ENABLED, DOMAIN
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -20,9 +20,7 @@ async def async_setup_entry(
     if not config_entry.data.get(CONF_WARNINGS_ENABLED, True):
         return
 
-    coordinator: SwissWeatherDataCoordinator = hass.data[DOMAIN][
-        get_weather_coordinator_key(config_entry)
-    ]
+    coordinator: SwissWeatherDataCoordinator = config_entry.runtime_data.weather_coordinator
     post_code: str = config_entry.data[CONF_POST_CODE]
     forecast_name: str = config_entry.data.get(CONF_FORECAST_NAME, post_code)
     forecast_device = DeviceInfo(

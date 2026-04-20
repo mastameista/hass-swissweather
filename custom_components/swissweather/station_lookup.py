@@ -6,14 +6,22 @@ import csv
 from dataclasses import dataclass
 import logging
 
-import requests
+from aiohttp import ClientError, ClientSession
 
-from .pollen import PollenClient
+from .pollen import PollenClient, PollenClientError
+from .request import REQUEST_TIMEOUT, async_get_with_retry
 
 _LOGGER = logging.getLogger(__name__)
-REQUEST_TIMEOUT = 10
 
 STATION_LIST_URL = "https://data.geo.admin.ch/ch.meteoschweiz.messnetz-automatisch/ch.meteoschweiz.messnetz-automatisch_en.csv"
+
+
+class WeatherStationMetadataLoadError(Exception):
+    """Raised when weather station metadata cannot be loaded reliably."""
+
+
+class PollenStationMetadataLoadError(Exception):
+    """Raised when pollen station metadata cannot be loaded reliably."""
 
 
 @dataclass
@@ -40,15 +48,19 @@ def _float_or_none(val: str) -> float | None:
     return float(val)
 
 
-def load_weather_station_list(encoding: str = "ISO-8859-1") -> list[WeatherStation]:
+async def async_load_weather_station_list(
+    session: ClientSession,
+    encoding: str = "ISO-8859-1",
+    *,
+    raise_on_error: bool = False,
+) -> list[WeatherStation]:
     """Load the list of MeteoSwiss weather stations."""
     _LOGGER.info("Requesting station list data...")
     try:
-        with requests.get(
-            STATION_LIST_URL, stream=True, timeout=REQUEST_TIMEOUT
-        ) as response:
-            response.raise_for_status()
-            lines = (line.decode(encoding) for line in response.iter_lines())
+
+        async def _parse_csv(response) -> list[WeatherStation]:
+            text = await response.text(encoding=encoding)
+            lines = text.splitlines()
             reader = csv.DictReader(lines, delimiter=";")
             stations = []
             for row in reader:
@@ -71,27 +83,50 @@ def load_weather_station_list(encoding: str = "ISO-8859-1") -> list[WeatherStati
                         row.get("Canton"),
                     )
                 )
+            return stations
+
+        stations = await async_get_with_retry(
+            session,
+            STATION_LIST_URL,
+            logger=_LOGGER,
+            response_handler=_parse_csv,
+            timeout=REQUEST_TIMEOUT,
+        )
     except (
-        requests.exceptions.RequestException,
+        ClientError,
+        TimeoutError,
         UnicodeDecodeError,
         csv.Error,
         ValueError,
-    ):
+    ) as err:
         _LOGGER.warning("Failed to load MeteoSwiss station metadata", exc_info=True)
+        if raise_on_error:
+            raise WeatherStationMetadataLoadError(
+                "Failed to load MeteoSwiss station metadata"
+            ) from err
         return []
 
     _LOGGER.info("Retrieved %d weather stations.", len(stations))
     return stations
 
 
-def load_pollen_station_list() -> list[WeatherStation]:
+async def async_load_pollen_station_list(
+    pollen_client: PollenClient,
+    *,
+    raise_on_error: bool = False,
+) -> list[WeatherStation]:
     """Load the list of pollen stations."""
     _LOGGER.info("Requesting pollen station list data...")
     try:
-        pollen_client = PollenClient()
-        pollen_station_list = pollen_client.get_pollen_station_list()
-    except Exception:
-        _LOGGER.warning("Failed to load MeteoSwiss pollen station metadata", exc_info=True)
+        pollen_station_list = await pollen_client.async_get_pollen_station_list()
+    except (PollenClientError, Exception) as err:
+        _LOGGER.warning(
+            "Failed to load MeteoSwiss pollen station metadata", exc_info=True
+        )
+        if raise_on_error:
+            raise PollenStationMetadataLoadError(
+                "Failed to load MeteoSwiss pollen station metadata"
+            ) from err
         return []
 
     if pollen_station_list is None:
@@ -99,20 +134,29 @@ def load_pollen_station_list() -> list[WeatherStation]:
 
     stations = []
     for station in pollen_station_list:
-        stations.append(
-            WeatherStation(
-                station.name,
-                station.abbreviation,
-                int(station.altitude),
-                station.lat,
-                station.lng,
-                station.canton,
+        try:
+            stations.append(
+                WeatherStation(
+                    station.name,
+                    station.abbreviation,
+                    int(station.altitude) if station.altitude is not None else None,
+                    station.lat,
+                    station.lng,
+                    station.canton,
+                )
             )
-        )
+        except (TypeError, ValueError):
+            _LOGGER.warning(
+                "Skipping invalid MeteoSwiss pollen station metadata row for %s",
+                station.abbreviation,
+                exc_info=True,
+            )
     return stations
 
 
-def find_station_by_code(stations: list[WeatherStation], code: str | None) -> WeatherStation | None:
+def find_station_by_code(
+    stations: list[WeatherStation], code: str | None
+) -> WeatherStation | None:
     """Return the station with the given code, if any."""
     if code is None:
         return None

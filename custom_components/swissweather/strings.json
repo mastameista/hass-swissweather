@@ -14,15 +14,15 @@
       "reconfigure": {
         "title": "Stations",
         "description": "Update the weather and pollen stations for the existing forecast place.",
+        "data_description": {
+          "stationCode": "Choose a nearby live weather station, or leave it on No live weather station if you only want forecast-based current conditions.",
+          "pollenStationCode": "Choose a pollen station for local pollen measurements, or leave it disabled if you do not want pollen entities.",
+          "warningsEnabled": "Creates warning entities for the selected forecast place, including warning count, highest level, and prioritized warning slots."
+        },
         "data": {
           "stationCode": "Weather station for current weather state",
           "pollenStationCode": "Pollen measuring station",
           "warningsEnabled": "Create weather warning entities"
-        },
-        "data_description": {
-          "stationCode": "Choose a nearby live weather station for current conditions.",
-          "pollenStationCode": "Choose a pollen station, or leave it disabled if you do not want pollen entities.",
-          "warningsEnabled": "Creates warning entities for the selected forecast place, including warning count, highest level, and prioritized warning slots."
         }
       },
       "forecast_pick": {
@@ -37,10 +37,10 @@
       },
       "details": {
         "title": "Stations",
-        "description": "Choose the weather station, pollen station, and warning settings.",
+        "description": "Choose the weather and pollen stations.",
         "data_description": {
-          "stationCode": "Choose a nearby live weather station for current conditions.",
-          "pollenStationCode": "Choose a pollen station, or leave it disabled if you do not want pollen entities.",
+          "stationCode": "Choose a nearby live weather station, or leave it on No live weather station if you only want forecast-based current conditions.",
+          "pollenStationCode": "Choose a pollen station for local pollen measurements, or leave it disabled if you do not want pollen entities.",
           "warningsEnabled": "Creates warning entities for the selected forecast place, including warning count, highest level, and prioritized warning slots."
         },
         "data": {
@@ -72,48 +72,48 @@
       }
     },
     "sensor": {
-        "time": {
-          "name": "Time"
-        },
-        "temperature": {
-          "name": "Temperature"
-        },
-        "precipitation": {
-          "name": "Precipitation"
-        },
-        "sunshine": {
-          "name": "Sunshine"
-        },
-        "global_radiation": {
-          "name": "Global radiation"
-        },
-        "humidity": {
-          "name": "Relative humidity"
-        },
-        "dew_point": {
-          "name": "Dew point"
-        },
-        "wind_direction": {
-          "name": "Wind direction"
-        },
-        "wind_speed": {
-          "name": "Wind speed"
-        },
-        "gust_peak1s": {
-          "name": "Wind gusts peak 1 s"
-        },
-        "pressure": {
-          "name": "Air pressure"
-        },
-        "pressure_qff": {
-          "name": "Air pressure sea level (QFF)"
-        },
-        "pressure_qnh": {
-          "name": "Air pressure sea level (QNH)"
-        },
-        "warning_count": {
-          "name": "Weather warning count"
-        },
+      "time": {
+        "name": "Time"
+      },
+      "temperature": {
+        "name": "Temperature"
+      },
+      "precipitation": {
+        "name": "Precipitation"
+      },
+      "sunshine": {
+        "name": "Sunshine"
+      },
+      "global_radiation": {
+        "name": "Global radiation"
+      },
+      "humidity": {
+        "name": "Relative humidity"
+      },
+      "dew_point": {
+        "name": "Dew point"
+      },
+      "wind_direction": {
+        "name": "Wind direction"
+      },
+      "wind_speed": {
+        "name": "Wind speed"
+      },
+      "gust_peak1s": {
+        "name": "Wind gusts peak 1 s"
+      },
+      "pressure": {
+        "name": "Air pressure"
+      },
+      "pressure_qff": {
+        "name": "Air pressure sea level (QFF)"
+      },
+      "pressure_qnh": {
+        "name": "Air pressure sea level (QNH)"
+      },
+      "warning_count": {
+        "name": "Weather warning count"
+      },
       "highest_warning_level": {
         "name": "Highest weather warning level"
       },
@@ -123,54 +123,68 @@
       "secondary_warning": {
         "name": "Secondary weather warning"
       },
-        "tertiary_warning": {
-          "name": "Tertiary weather warning"
-        },
-        "pollen_time": {
-          "name": "Pollen time"
-        },
-        "birch": {
-          "name": "Pollen birch"
-        },
-        "birch_level": {
-          "name": "Pollen birch level"
-        },
-        "grasses": {
-          "name": "Pollen grasses"
-        },
-        "grasses_level": {
-          "name": "Pollen grasses level"
-        },
-        "alder": {
-          "name": "Pollen alder"
-        },
-        "alder_level": {
-          "name": "Pollen alder level"
-        },
-        "hazel": {
-          "name": "Pollen hazel"
-        },
-        "hazel_level": {
-          "name": "Pollen hazel level"
-        },
-        "beech": {
-          "name": "Pollen beech"
-        },
-        "beech_level": {
-          "name": "Pollen beech level"
-        },
-        "ash": {
-          "name": "Pollen ash"
-        },
-        "ash_level": {
-          "name": "Pollen ash level"
-        },
-        "oak": {
-          "name": "Pollen oak"
-        },
-        "oak_level": {
-          "name": "Pollen oak level"
-        }
+      "tertiary_warning": {
+        "name": "Tertiary weather warning"
+      },
+      "pollen_time": {
+        "name": "Pollen time"
+      },
+      "birch": {
+        "name": "Pollen birch"
+      },
+      "birch_level": {
+        "name": "Pollen birch level"
+      },
+      "grasses": {
+        "name": "Pollen grasses"
+      },
+      "grasses_level": {
+        "name": "Pollen grasses level"
+      },
+      "alder": {
+        "name": "Pollen alder"
+      },
+      "alder_level": {
+        "name": "Pollen alder level"
+      },
+      "hazel": {
+        "name": "Pollen hazel"
+      },
+      "hazel_level": {
+        "name": "Pollen hazel level"
+      },
+      "beech": {
+        "name": "Pollen beech"
+      },
+      "beech_level": {
+        "name": "Pollen beech level"
+      },
+      "ash": {
+        "name": "Pollen ash"
+      },
+      "ash_level": {
+        "name": "Pollen ash level"
+      },
+      "oak": {
+        "name": "Pollen oak"
+      },
+      "oak_level": {
+        "name": "Pollen oak level"
       }
     }
+  },
+  "issues": {
+    "missing_forecast_point": {
+      "title": "The stored forecast place for {entry_title} is no longer available",
+      "description": "The saved forecast place ID `{post_code}` can no longer be found in the latest MeteoSwiss forecast metadata. Remove the Swiss Weather entry and add it again to choose a new forecast place."
+    },
+    "missing_weather_station": {
+      "title": "The stored weather station for {entry_title} is no longer available",
+      "description": "The saved weather station code `{station_code}` can no longer be found in the latest MeteoSwiss station metadata. Reconfigure the Swiss Weather entry to pick a new weather station or remove it."
+    },
+    "missing_pollen_station": {
+      "title": "The stored pollen station for {entry_title} is no longer available",
+      "description": "The saved pollen station code `{station_code}` can no longer be found in the latest MeteoSwiss pollen metadata. Reconfigure the Swiss Weather entry to pick a new pollen station or disable pollen for this entry."
+    }
+  }
 }
