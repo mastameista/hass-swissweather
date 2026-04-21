@@ -20,6 +20,14 @@ class FakeHass:
         self.config = SimpleNamespace(language=language)
 
 
+class FakeConfigEntry:
+    def __init__(self, data: dict) -> None:
+        self.data = data
+
+    def async_on_unload(self, _callback) -> None:
+        return None
+
+
 def test_weather_coordinator_fails_when_forecast_missing(monkeypatch):
     from custom_components.swissweather import coordinator as coordinator_module
 
@@ -41,8 +49,8 @@ def test_weather_coordinator_fails_when_forecast_missing(monkeypatch):
 
     coordinator = SwissWeatherDataCoordinator(
         FakeHass(),
-        SimpleNamespace(
-            data={CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"},
+        FakeConfigEntry(
+            {CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"},
         ),
     )
 
@@ -76,8 +84,8 @@ def test_weather_coordinator_uses_forecast_current_as_fallback(monkeypatch):
 
     coordinator = SwissWeatherDataCoordinator(
         FakeHass(),
-        SimpleNamespace(
-            data={CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"},
+        FakeConfigEntry(
+            {CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"},
         ),
     )
 
@@ -121,8 +129,8 @@ def test_weather_coordinator_logs_station_outage_once_and_recovery(monkeypatch, 
 
     coordinator = SwissWeatherDataCoordinator(
         FakeHass(),
-        SimpleNamespace(
-            data={CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"},
+        FakeConfigEntry(
+            {CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"},
         ),
     )
 
@@ -170,7 +178,7 @@ def test_weather_coordinator_classifies_forecast_connection_errors(monkeypatch):
 
     coordinator = SwissWeatherDataCoordinator(
         FakeHass(),
-        SimpleNamespace(data={CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"}),
+        FakeConfigEntry({CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"}),
     )
 
     with pytest.raises(UpdateFailed, match="Could not reach MeteoSwiss forecast endpoint"):
@@ -194,7 +202,7 @@ def test_pollen_coordinator_classifies_invalid_payload(monkeypatch):
 
     coordinator = coordinator_module.SwissPollenDataCoordinator(
         FakeHass(),
-        SimpleNamespace(data={"pollenStationCode": "BAS"}),
+        FakeConfigEntry({"pollenStationCode": "BAS"}),
     )
 
     with pytest.raises(UpdateFailed, match="invalid pollen payload"):
@@ -222,7 +230,7 @@ def test_weather_coordinator_classifies_invalid_warning_payload(monkeypatch):
 
     coordinator = SwissWeatherDataCoordinator(
         FakeHass(),
-        SimpleNamespace(data={CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"}),
+        FakeConfigEntry({CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"}),
     )
 
     with pytest.raises(UpdateFailed, match="invalid forecast payload"):
@@ -238,7 +246,7 @@ def test_weather_coordinator_normalizes_hass_language(monkeypatch):
 
     coordinator = SwissWeatherDataCoordinator(
         FakeHass(language="de-CH"),
-        SimpleNamespace(data={CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"}),
+        FakeConfigEntry({CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"}),
     )
 
     assert coordinator._client.language == "de"
