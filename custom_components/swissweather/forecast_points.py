@@ -192,7 +192,9 @@ def find_forecast_point_by_stored_value(
         if typed_candidates:
             candidates = typed_candidates
 
-    exact_point_id_matches = [point for point in candidates if point.point_id == normalized]
+    exact_point_id_matches = [
+        point for point in candidates if point.point_id == normalized
+    ]
     if exact_point_id_matches:
         candidates = exact_point_id_matches
     else:
@@ -220,7 +222,9 @@ def find_forecast_point_by_stored_value(
     )[0]
 
 
-def search_forecast_points(points: list[ForecastPoint], query: str) -> list[ForecastPoint]:
+def search_forecast_points(
+    points: list[ForecastPoint], query: str
+) -> list[ForecastPoint]:
     """Search forecast points using exact numeric or substring text matching."""
     normalized = query.strip()
     if not normalized:

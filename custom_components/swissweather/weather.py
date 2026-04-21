@@ -17,6 +17,7 @@ from homeassistant.helpers.device_registry import DeviceEntryType
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import slugify
 
 from . import SwissWeatherDataCoordinator
 from .const import CONF_FORECAST_NAME, CONF_POST_CODE, CONF_STATION_NAME, DOMAIN
@@ -26,7 +27,6 @@ from .meteo import (
     Forecast as MeteoForecast,
     WeatherForecast,
 )
-from .naming import slug
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ class SwissWeather(CoordinatorEntity[SwissWeatherDataCoordinator], WeatherEntity
         self._forecast_name = forecast_name
         self._weather_station_name = config_entry.data.get(CONF_STATION_NAME)
         self._attr_name = None
-        self._attr_suggested_object_id = slug(forecast_name)
+        self._attr_suggested_object_id = slugify(forecast_name)
         if self._weather_station_name:
             self._attr_attribution = (
                 f"MeteoSwiss. Forecast: {forecast_name}. "
