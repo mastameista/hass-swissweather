@@ -387,7 +387,9 @@ async def _async_ensure_entry_names(
         )
         if station is not None:
             data_updates[CONF_POLLEN_STATION_NAME] = format_station_display_name(
-                station.name
+                station.name,
+                station.canton,
+                include_canton=True,
             )
 
     if CONF_WARNINGS_ENABLED not in entry.data:

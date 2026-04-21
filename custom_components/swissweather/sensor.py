@@ -32,6 +32,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import slugify
 
 from . import (
     SwissPollenDataCoordinator,
@@ -50,7 +51,6 @@ from .const import (
     DOMAIN,
 )
 from .meteo import CurrentWeather, Warning, WarningLevel, WarningType
-from .naming import slug
 from .pollen import CurrentPollen, PollenLevel
 
 _LOGGER = logging.getLogger(__name__)
@@ -253,7 +253,7 @@ class SwissWeatherSensor(CoordinatorEntity[SwissWeatherDataCoordinator], SensorE
         self._sensor_entry = sensor_entry
         self._attr_unique_id = f"{post_code}.{sensor_entry.key}"
         self._attr_suggested_object_id = (
-            f"{slug(sensor_entry.key)}_{slug(station_name)}"
+            f"{slugify(sensor_entry.key)}_{slugify(station_name)}"
         )
         self._attr_device_info = device_info
         self._attr_attribution = "Source: MeteoSwiss"
@@ -309,7 +309,7 @@ class SwissWeatherWarningCountSensor(
         )
         self._attr_unique_id = f"{post_code}.warning_count"
         self._attr_suggested_object_id = (
-            f"weather_warning_count_{slug(forecast_name)}"
+            f"weather_warning_count_{slugify(forecast_name)}"
         )
         self._attr_device_info = device_info
         self._attr_attribution = "Source: MeteoSwiss"
@@ -347,7 +347,7 @@ class SwissWeatherHighestWarningLevelSensor(
         )
         self._attr_unique_id = f"{post_code}.highest_warning_level"
         self._attr_suggested_object_id = (
-            f"highest_weather_warning_level_{slug(forecast_name)}"
+            f"highest_weather_warning_level_{slugify(forecast_name)}"
         )
         self._attr_device_info = device_info
         self._attr_attribution = "Source: MeteoSwiss"
@@ -406,7 +406,7 @@ class SwissWeatherWarningSlotSensor(
         )
         self._attr_unique_id = f"{post_code}.{slot_label}_warning"
         self._attr_suggested_object_id = (
-            f"{slot_label}_weather_warning_{slug(forecast_name)}"
+            f"{slot_label}_weather_warning_{slugify(forecast_name)}"
         )
         self._attr_device_info = device_info
         self._attr_attribution = "Source: MeteoSwiss"
@@ -509,7 +509,7 @@ class SwissPollenSensor(CoordinatorEntity[SwissPollenDataCoordinator], SensorEnt
         self._sensor_entry = sensor_entry
         self._attr_unique_id = f"pollen-{post_code}.{sensor_entry.key}"
         self._attr_suggested_object_id = (
-            f"{slug(sensor_entry.key)}_{slug(station_name)}"
+            f"{slugify(sensor_entry.key)}_{slugify(station_name)}"
         )
         self._attr_device_info = device_info
         self._attr_device_class = sensor_entry.device_class
@@ -559,7 +559,7 @@ class SwissPollenLevelSensor(CoordinatorEntity[SwissPollenDataCoordinator], Sens
         self._sensor_entry = sensor_entry
         self._attr_unique_id = f"pollen-level-{post_code}.{sensor_entry.key}"
         self._attr_suggested_object_id = (
-            f"{slug(sensor_entry.key)}_level_{slug(station_name)}"
+            f"{slugify(sensor_entry.key)}_level_{slugify(station_name)}"
         )
         self._attr_device_info = device_info
         self._attr_options = [
