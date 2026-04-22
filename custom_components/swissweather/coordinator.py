@@ -31,8 +31,14 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[tuple[CurrentWeather | N
         self._forecast_point_type = config_entry.data.get(CONF_FORECAST_POINT_TYPE)
         self._client = MeteoClient()
         update_interval = timedelta(minutes=10)
-        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=update_interval,
-                         always_update=False)
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=DOMAIN,
+            update_interval=update_interval,
+            always_update=False,
+            config_entry=config_entry,
+        )
 
     async def _async_update_data(self) -> tuple[CurrentWeather | None, WeatherForecast | None]:
         if self._station_code is None:
@@ -89,8 +95,14 @@ class SwissPollenDataCoordinator(DataUpdateCoordinator[CurrentPollen | None]):
         self._pollen_station_code = config_entry.data.get(CONF_POLLEN_STATION_CODE)
         self._client = PollenClient()
         update_interval = timedelta(minutes=60)
-        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=update_interval,
-            always_update=False)
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=DOMAIN,
+            update_interval=update_interval,
+            always_update=False,
+            config_entry=config_entry,
+        )
 
     async def _async_update_data(self) -> CurrentPollen | None:
         current_state = None

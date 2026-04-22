@@ -4,20 +4,33 @@
       "user": {
         "title": "Forecast Place",
         "description": "Search a forecast place by name, or enter an exact postal code or MeteoSwiss point ID. ZIP codes, locations and points of interest such as peaks, passes and huts are supported. You will confirm the selected forecast place in the next step.",
+        "data_description": {
+          "forecast_query": "Search by place name, postal code, MeteoSwiss forecast point ID, or points of interest such as peaks, passes, and huts."
+        },
         "data": {
           "forecast_query": "Forecast place search"
         }
       },
       "reconfigure": {
-        "title": "Forecast Place",
-        "description": "Search a forecast place by name, or enter an exact postal code or MeteoSwiss point ID. ZIP codes, locations and points of interest such as peaks, passes and huts are supported. You will confirm the selected forecast place in the next step.",
+        "title": "Stations",
+        "description": "Update the weather and pollen stations for the existing forecast place.",
         "data": {
-          "forecast_query": "Forecast place search"
+          "stationCode": "Weather station for current weather state",
+          "pollenStationCode": "Pollen measuring station",
+          "weatherWarningsNumber": "Number of weather warnings to show as separate entities (default: 1)"
+        },
+        "data_description": {
+          "stationCode": "Choose a nearby live weather station for current conditions.",
+          "pollenStationCode": "Choose a pollen station, or leave it disabled if you do not want pollen entities.",
+          "weatherWarningsNumber": "Controls how many warning entities are created for this entry."
         }
       },
       "forecast_pick": {
         "title": "Select Forecast Place",
         "description": "Choose the forecast place you want to use, or select Search again.",
+        "data_description": {
+          "forecast_point": "Select the forecast place you want to use, or choose Search again to refine the query."
+        },
         "data": {
           "forecast_point": "Matching forecast places"
         }
@@ -25,6 +38,11 @@
       "details": {
         "title": "Stations",
         "description": "Choose the weather station, pollen station, and warning settings.",
+        "data_description": {
+          "stationCode": "Choose a nearby live weather station for current conditions.",
+          "pollenStationCode": "Choose a pollen station, or leave it disabled if you do not want pollen entities.",
+          "weatherWarningsNumber": "Controls how many warning entities are created for this entry."
+        },
         "data": {
           "stationCode": "Weather station for current weather state",
           "pollenStationCode": "Pollen measuring station",
@@ -38,6 +56,7 @@
       "unknown": "[%key:common::config_flow::error::unknown%]",
       "forecast_query_required": "Enter a forecast place search term.",
       "forecast_query_too_short": "Enter at least 2 letters or an exact postal code / point ID.",
+      "forecast_query_metadata_unavailable": "Forecast places are temporarily unavailable. Try again in a moment.",
       "forecast_query_not_found": "No matching forecast places were found.",
       "invalid_forecast_point": "Select one of the matching forecast places."
     },

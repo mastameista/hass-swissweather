@@ -44,3 +44,13 @@ def build_entry_title(
     if not parts:
         return "MeteoSwiss"
     return "MeteoSwiss " + " / ".join(parts)
+
+
+def build_entry_unique_id(post_code: str | None) -> str | None:
+    """Build a stable config-entry unique ID from the selected forecast point."""
+    if post_code is None:
+        return None
+    normalized = str(post_code).strip()
+    if not normalized:
+        return None
+    return f"swissweather_{normalized}"
