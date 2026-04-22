@@ -9,7 +9,9 @@ import itertools
 import logging
 from typing import NewType
 
-import requests
+from aiohttp import ClientError, ClientSession
+
+from .request import REQUEST_TIMEOUT, async_get_with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +20,8 @@ CURRENT_CONDITION_URL = (
 )
 FORECAST_URL = "https://app-prod-ws.meteoswiss-app.ch/v2/plzDetail?plz={}"
 FORECAST_USER_AGENT = "android-31 ch.admin.meteoswiss-2160000"
+DEFAULT_LANGUAGE = "en"
+SUPPORTED_LANGUAGES = frozenset({"de", "en", "fr", "it"})
 
 CONDITION_CLASSES = {
     "clear-night": [101],
@@ -29,7 +33,26 @@ CONDITION_CLASSES = {
     "partlycloudy": [2, 3, 4, 102, 103, 104],
     "pouring": [20, 120],
     "rainy": [6, 9, 14, 17, 29, 33, 106, 109, 114, 117, 129, 132, 133],
-    "snowy": [8, 11, 16, 19, 22, 30, 34, 37, 42, 108, 111, 116, 119, 122, 130, 134, 137, 142],
+    "snowy": [
+        8,
+        11,
+        16,
+        19,
+        22,
+        30,
+        34,
+        37,
+        42,
+        108,
+        111,
+        116,
+        119,
+        122,
+        130,
+        134,
+        137,
+        142,
+    ],
     "snowy-rainy": [7, 10, 15, 18, 21, 31, 39, 107, 110, 115, 118, 121, 131, 139],
     "sunny": [1, 26],
     "windy": [],
@@ -42,6 +65,18 @@ ICON_TO_CONDITION_MAP: dict[int, str] = {
     for condition, icons in CONDITION_CLASSES.items()
     for icon in icons
 }
+
+
+class MeteoSwissClientError(Exception):
+    """Base error for MeteoSwiss client failures."""
+
+
+class MeteoSwissConnectionError(MeteoSwissClientError):
+    """Raised when MeteoSwiss cannot be reached."""
+
+
+class MeteoSwissDataError(MeteoSwissClientError):
+    """Raised when MeteoSwiss returns invalid data."""
 
 
 def to_float(string: str) -> float | None:
@@ -64,6 +99,17 @@ def to_int(string: str) -> int | None:
     except ValueError:
         logger.error("Failed to convert value %s", string, exc_info=True)
         return None
+
+
+def normalize_language_tag(language: str | None) -> str:
+    """Normalize Home Assistant locale tags to MeteoSwiss-supported languages."""
+    if not language:
+        return DEFAULT_LANGUAGE
+
+    normalized = language.replace("_", "-").split("-", 1)[0].lower()
+    if normalized in SUPPORTED_LANGUAGES:
+        return normalized
+    return DEFAULT_LANGUAGE
 
 
 FloatValue = NewType("FloatValue", tuple[float | None, str | None])
@@ -106,35 +152,25 @@ class CurrentWeather:
 
 @dataclass
 class CurrentState:
-    currentTemperature: FloatValue
-    currentIcon: int
+    currentTemperature: FloatValue | None
+    currentIcon: int | None
     currentCondition: str | None
 
 
 @dataclass
 class Forecast:
     timestamp: datetime
-    icon: int
+    icon: int | None
     condition: str | None
-    temperatureMax: FloatValue
-    temperatureMin: FloatValue
-    precipitation: FloatValue
-    precipitationProbability: FloatValue | None
+    temperatureMax: FloatValue | None
+    temperatureMin: FloatValue | None
+    precipitation: FloatValue | None
     temperatureMean: FloatValue | None = None
+    precipitationProbability: FloatValue | None = None
     windSpeed: FloatValue | None = None
     windDirection: FloatValue | None = None
     windGustSpeed: FloatValue | None = None
     sunshine: FloatValue | None = None
-
-
-class WarningLevel(IntEnum):
-    UNKNOWN = -1
-    NO_DANGER = 0
-    NO_OR_MINIMAL_HAZARD = 1
-    MODERATE_HAZARD = 2
-    SIGNIFICANT_HAZARD = 3
-    SEVERE_HAZARD = 4
-    VERY_SEVERE_HAZARD = 5
 
 
 class WarningType(IntEnum):
@@ -154,21 +190,25 @@ class WarningType(IntEnum):
     UNKNOWN = 99
 
 
-@dataclass(frozen=True)
+class WarningLevel(IntEnum):
+    UNKNOWN = -1
+    NO_DANGER = 0
+    NO_OR_MINIMAL_HAZARD = 1
+    MODERATE_HAZARD = 2
+    SIGNIFICANT_HAZARD = 3
+    SEVERE_HAZARD = 4
+    VERY_SEVERE_HAZARD = 5
+
+
+@dataclass
 class WarningLink:
     url: str | None
     text: str | None
     alt_url: str | None = None
 
-    def as_dict(self) -> dict[str, str]:
-        data: dict[str, str] = {}
-        if self.url is not None:
-            data["url"] = self.url
-        if self.text is not None:
-            data["text"] = self.text
-        if self.alt_url is not None:
-            data["alt_url"] = self.alt_url
-        return data
+    def as_dict(self) -> dict[str, str | None]:
+        """Return a Home Assistant-safe mapping for state attributes."""
+        return {"url": self.url, "text": self.text, "alt_url": self.alt_url}
 
 
 @dataclass
@@ -181,47 +221,54 @@ class Warning:
     validFrom: datetime | None
     validTo: datetime | None
     links: list[WarningLink]
-    ordering: str | None
-    raw_type: int | None
-    raw_level: int | None
-    fingerprint: str
+    ordering: str | None = None
+    raw_type: int | None = None
+    raw_level: int | None = None
+    fingerprint: str | None = None
 
     @property
     def effective_level(self) -> int:
-        if self.warningLevel != WarningLevel.UNKNOWN:
-            return int(self.warningLevel)
-        if self.raw_level is not None:
+        """Return the warning level as integer for sorting and comparisons."""
+        if self.warningLevel == WarningLevel.UNKNOWN and self.raw_level is not None:
             return self.raw_level
-        return int(WarningLevel.UNKNOWN)
+        return int(self.warningLevel.value)
+
+    @property
+    def type_name(self) -> str:
+        """Return a lowercase warning type label for state attributes."""
+        return self.warningType.name.lower()
 
     @property
     def type_state(self) -> str:
+        """Return a readable entity state for ranked warning entities."""
         if self.warningType == WarningType.UNKNOWN and self.raw_type is not None:
             return f"unknown_{self.raw_type}"
         return self.warningType.name.lower()
 
     @property
-    def level_name(self) -> str:
-        if self.warningLevel != WarningLevel.UNKNOWN:
-            return self.warningLevel.name.replace("_", " ").capitalize()
-        if self.raw_level is not None:
-            return f"Level {self.raw_level}"
-        return "Unknown"
+    def level_name(self) -> str | None:
+        """Return a human-friendly warning level label."""
+        if self.warningLevel == WarningLevel.UNKNOWN:
+            return (
+                f"Level {self.raw_level}"
+                if self.raw_level is not None
+                else None
+            )
+        return self.warningLevel.name.replace("_", " ").title()
 
-    @property
-    def type_name(self) -> str:
-        if self.warningType == WarningType.UNKNOWN and self.raw_type is not None:
-            return f"Unknown ({self.raw_type})"
-        return self.warningType.name.replace("_", " ").capitalize()
+    def is_active(self, now: datetime | None = None) -> bool:
+        """Return whether the warning is currently active."""
+        now = now or datetime.now(UTC)
+        if self.validFrom and now < self.validFrom:
+            return False
+        if self.validTo and now > self.validTo:
+            return False
+        return True
 
-    def is_started(self, now: datetime) -> bool:
-        return self.validFrom is None or self.validFrom <= now
-
-    def is_expired(self, now: datetime) -> bool:
-        return self.validTo is not None and self.validTo < now
-
-    def is_active(self, now: datetime) -> bool:
-        return self.is_started(now) and not self.is_expired(now)
+    def is_expired(self, now: datetime | None = None) -> bool:
+        """Return whether the warning has already expired."""
+        now = now or datetime.now(UTC)
+        return self.validTo is not None and now > self.validTo
 
 
 @dataclass
@@ -229,9 +276,17 @@ class WeatherForecast:
     current: CurrentState | None
     dailyForecast: list[Forecast] | None
     hourlyForecast: list[Forecast] | None
-    sunrise: list[datetime] | None
-    sunset: list[datetime] | None
+    sunrises: list[datetime] | None
+    sunsets: list[datetime] | None
     warnings: list[Warning] | None
+
+
+def _chunked(values: list, size: int):
+    return list(itertools.zip_longest(*(iter(values),) * size, fillvalue=None))
+
+
+def _get_float_value(values: list[float | None], unit: str) -> list[FloatValue | None]:
+    return [(value, unit) if value is not None else None for value in values]
 
 
 def build_warning_fingerprint(
@@ -278,23 +333,35 @@ def parse_warning_level(value: int | None) -> WarningLevel:
 
 
 class MeteoClient:
-    language: str = "en"
+    """Client for MeteoSwiss weather data.
 
-    def __init__(self, language: str = "en"):
+    MeteoSwiss currently supports the languages ``de``, ``en``, ``fr``, and ``it``.
+    """
+
+    language: str = DEFAULT_LANGUAGE
+
+    def __init__(self, session: ClientSession, language: str = DEFAULT_LANGUAGE):
         """Initialize the MeteoSwiss client."""
-        self.language = language
+        self._session = session
+        self.language = normalize_language_tag(language)
 
-    def get_current_weather_for_all_stations(self) -> list[CurrentWeather] | None:
+    async def async_get_current_weather_for_all_stations(
+        self,
+    ) -> list[CurrentWeather] | None:
         logger.debug("Retrieving current weather for all stations ...")
-        data = self._get_csv_dictionary_for_url(CURRENT_CONDITION_URL)
+        data = await self._async_get_csv_dictionary_for_url(CURRENT_CONDITION_URL)
+        if data is None:
+            return None
         weather = []
         for row in data:
             weather.append(self._get_current_data_for_row(row))
         return weather
 
-    def get_current_weather_for_station(self, station: str) -> CurrentWeather | None:
+    async def async_get_current_weather_for_station(
+        self, station: str
+    ) -> CurrentWeather | None:
         logger.debug("Retrieving current weather...")
-        data = self._get_current_weather_line_for_station(station)
+        data = await self._async_get_current_weather_line_for_station(station)
         if data is None:
             logger.warning("Couldn't find data for station %s", station)
             return None
@@ -325,10 +392,12 @@ class MeteoClient:
             (to_float(csv_row.get("pp0qnhs0", None)), "hPa"),
         )
 
-    def get_forecast(
+    async def async_get_forecast(
         self, postCode, forecastPointType: str | None = None
     ) -> WeatherForecast | None:
-        forecastJson = self._get_forecast_json(postCode, self.language, forecastPointType)
+        forecastJson = await self._async_get_forecast_json(
+            postCode, self.language, forecastPointType
+        )
         logger.debug("Forecast JSON: %s", forecastJson)
         if forecastJson is None:
             return None
@@ -336,7 +405,15 @@ class MeteoClient:
         currentState = self._get_current_state(forecastJson)
         dailyForecast = self._get_daily_forecast(forecastJson)
         hourlyForecast = self._get_hourly_forecast(forecastJson)
-        warnings = self._get_weather_warnings(forecastJson)
+        try:
+            warnings = self._get_weather_warnings(forecastJson)
+        except MeteoSwissDataError as err:
+            logger.warning(
+                "Failed to parse MeteoSwiss warnings for %s; continuing without warnings: %s",
+                postCode,
+                err,
+            )
+            warnings = []
 
         sunrises = None
         sunriseJson = forecastJson.get("graph", {}).get("sunrise", None)
@@ -381,18 +458,14 @@ class MeteoClient:
                 timestamp = datetime.strptime(dailyJson["dayDate"], "%Y-%m-%d")
             icon = to_int(dailyJson.get("iconDay", None))
             condition = ICON_TO_CONDITION_MAP.get(icon)
-            temperatureMax = (to_float(dailyJson.get("temperatureMax", None)), "C")
-            temperatureMin = (to_float(dailyJson.get("temperatureMin", None)), "C")
-            precipitation = (to_float(dailyJson.get("precipitation", None)), "mm/h")
             forecast.append(
                 Forecast(
                     timestamp,
                     icon,
                     condition,
-                    temperatureMax,
-                    temperatureMin,
-                    precipitation,
-                    None,
+                    (to_float(dailyJson.get("temperatureMax", None)), "C"),
+                    (to_float(dailyJson.get("temperatureMin", None)), "C"),
+                    (to_float(dailyJson.get("precipitation", None)), "mm/h"),
                 )
             )
         return forecast
@@ -408,10 +481,18 @@ class MeteoClient:
         startTimestamp = datetime.fromtimestamp(startTimestampEpoch / 1000, UTC)
 
         forecast = []
-        temperatureMaxList = [(value, "C") for value in graphJson.get("temperatureMax1h", [])]
-        temperatureMeanList = [(value, "C") for value in graphJson.get("temperatureMean1h", [])]
-        temperatureMinList = [(value, "C") for value in graphJson.get("temperatureMin1h", [])]
-        windGustSpeedList = [(value, "km/h") for value in graphJson.get("gustSpeed1h", [])]
+        temperatureMaxList = [
+            (value, "C") for value in graphJson.get("temperatureMax1h", [])
+        ]
+        temperatureMeanList = [
+            (value, "C") for value in graphJson.get("temperatureMean1h", [])
+        ]
+        temperatureMinList = [
+            (value, "C") for value in graphJson.get("temperatureMin1h", [])
+        ]
+        windGustSpeedList = [
+            (value, "km/h") for value in graphJson.get("gustSpeed1h", [])
+        ]
         windSpeedList = [(value, "km/h") for value in graphJson.get("windSpeed1h", [])]
         sunshineList = [(value, "min/h") for value in graphJson.get("sunshine1h", [])]
 
@@ -465,7 +546,8 @@ class MeteoClient:
             len(iconList),
         )
         timestampList = [
-            startTimestamp + timedelta(hours=value) for value in range(0, minForecastHours)
+            startTimestamp + timedelta(hours=value)
+            for value in range(0, minForecastHours)
         ]
 
         for (
@@ -518,6 +600,7 @@ class MeteoClient:
             return []
 
         warnings: list[Warning] = []
+        parse_errors = 0
         for warningJson in warningsJson:
             try:
                 raw_type = to_int(warningJson.get("warnType"))
@@ -564,31 +647,53 @@ class MeteoClient:
                         ),
                     )
                 )
-            except Exception:
+            except (AttributeError, KeyError, TypeError, ValueError):
+                parse_errors += 1
                 logger.error("Failed to parse warning", exc_info=True)
+
+        if warningsJson and parse_errors == len(warningsJson):
+            raise MeteoSwissDataError("Failed to parse MeteoSwiss warnings payload")
+
         return warnings
 
-    def _get_current_weather_line_for_station(self, station):
+    async def _async_get_current_weather_line_for_station(self, station):
         if station is None:
+            return None
+        data = await self._async_get_csv_dictionary_for_url(CURRENT_CONDITION_URL)
+        if data is None:
             return None
         return next(
             (
                 row
-                for row in self._get_csv_dictionary_for_url(CURRENT_CONDITION_URL)
+                for row in data
                 if row["Station/Location"].casefold() == station.casefold()
             ),
             None,
         )
 
-    def _get_csv_dictionary_for_url(self, url, encoding="utf-8"):
+    async def _async_get_csv_dictionary_for_url(self, url, encoding="utf-8"):
         try:
             logger.debug("Requesting station data from %s...", url)
-            with requests.get(url, stream=True) as r:
-                lines = (line.decode(encoding) for line in r.iter_lines())
-                yield from csv.DictReader(lines, delimiter=";")
-        except requests.exceptions.RequestException:
-            logger.error("Connection failure.", exc_info=True)
-            return None
+
+            async def _parse_csv(response) -> list[dict[str, str]]:
+                text = await response.text(encoding=encoding)
+                return list(csv.DictReader(text.splitlines(), delimiter=";"))
+
+            return await async_get_with_retry(
+                self._session,
+                url,
+                logger=logger,
+                response_handler=_parse_csv,
+                timeout=REQUEST_TIMEOUT,
+            )
+        except (ClientError, TimeoutError) as err:
+            raise MeteoSwissConnectionError(
+                f"Failed to fetch MeteoSwiss CSV from {url}"
+            ) from err
+        except (UnicodeDecodeError, csv.Error) as err:
+            raise MeteoSwissDataError(
+                f"Invalid MeteoSwiss CSV payload from {url}"
+            ) from err
 
     def _build_forecast_query_value(
         self, postCode, forecastPointType: str | None = None
@@ -602,21 +707,34 @@ class MeteoClient:
             return normalized.ljust(6, "0")
         return normalized
 
-    def _get_forecast_json(
+    async def _async_get_forecast_json(
         self, postCode, language, forecastPointType: str | None = None
     ):
+        query_value = self._build_forecast_query_value(postCode, forecastPointType)
+        url = FORECAST_URL.format(query_value)
+        logger.debug("Requesting forecast data from %s...", url)
         try:
-            query_value = self._build_forecast_query_value(postCode, forecastPointType)
-            url = FORECAST_URL.format(query_value)
-            logger.debug("Requesting forecast data from %s...", url)
-            return requests.get(
+
+            async def _parse_json(response):
+                return await response.json()
+
+            return await async_get_with_retry(
+                self._session,
                 url,
+                logger=logger,
+                response_handler=_parse_json,
                 headers={
                     "User-Agent": FORECAST_USER_AGENT,
                     "Accept-Language": language,
                     "Accept": "application/json",
                 },
-            ).json()
-        except requests.exceptions.RequestException:
-            logger.error("Connection failure.", exc_info=1)
-            return None
+                timeout=REQUEST_TIMEOUT,
+            )
+        except (ClientError, TimeoutError) as err:
+            raise MeteoSwissConnectionError(
+                f"Failed to fetch MeteoSwiss forecast from {url}"
+            ) from err
+        except ValueError as err:
+            raise MeteoSwissDataError(
+                f"Invalid MeteoSwiss forecast payload from {url}"
+            ) from err

@@ -95,6 +95,7 @@ async def async_load_forecast_point_list(
     """Load the list of MeteoSwiss local forecast points."""
     _LOGGER.info("Requesting forecast point list data...")
     try:
+
         async def _parse_csv(response) -> list[ForecastPoint]:
             text = await response.text(encoding=encoding)
             lines = text.splitlines()
@@ -159,6 +160,66 @@ def find_forecast_point_by_id(
     if point_id is None:
         return None
     return next((point for point in points if point.point_id == str(point_id)), None)
+
+
+def find_forecast_point_by_stored_value(
+    points: list[ForecastPoint],
+    stored_value: str | None,
+    point_type_id: str | None = None,
+) -> ForecastPoint | None:
+    """Resolve a forecast point from either a point ID or a legacy postal code."""
+    if stored_value is None:
+        return None
+
+    normalized = str(stored_value).strip()
+    if not normalized:
+        return None
+
+    candidates = [
+        point
+        for point in points
+        if point.point_id == normalized or getattr(point, "postal_code", None) == normalized
+    ]
+    if not candidates:
+        return None
+
+    if point_type_id is not None:
+        typed_candidates = [
+            point
+            for point in candidates
+            if getattr(point, "point_type_id", None) == point_type_id
+        ]
+        if typed_candidates:
+            candidates = typed_candidates
+
+    exact_point_id_matches = [
+        point for point in candidates if point.point_id == normalized
+    ]
+    if exact_point_id_matches:
+        candidates = exact_point_id_matches
+    else:
+        postal_code_matches = [
+            point
+            for point in candidates
+            if getattr(point, "postal_code", None) == normalized
+        ]
+        if postal_code_matches:
+            candidates = postal_code_matches
+
+    preferred_postal_candidates = [
+        point for point in candidates if getattr(point, "point_type_id", None) == "2"
+    ]
+    if preferred_postal_candidates:
+        candidates = preferred_postal_candidates
+
+    return sorted(
+        candidates,
+        key=lambda point: (
+            getattr(point, "point_type_id", ""),
+            getattr(point, "display_name", getattr(point, "point_name", "")),
+            point.point_id,
+        ),
+    )[0]
 
 
 def search_forecast_points(

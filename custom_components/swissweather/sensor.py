@@ -34,12 +34,7 @@ from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 
-from . import (
-    SwissPollenDataCoordinator,
-    SwissWeatherDataCoordinator,
-    get_pollen_coordinator_key,
-    get_weather_coordinator_key,
-)
+from . import SwissPollenDataCoordinator, SwissWeatherDataCoordinator
 from .const import (
     CONF_FORECAST_NAME,
     CONF_POLLEN_STATION_CODE,
@@ -136,9 +131,8 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    coordinator: SwissWeatherDataCoordinator = hass.data[DOMAIN][
-        get_weather_coordinator_key(config_entry)
-    ]
+    runtime_data = config_entry.runtime_data
+    coordinator: SwissWeatherDataCoordinator = runtime_data.weather_coordinator
     postCode: str = config_entry.data[CONF_POST_CODE]
     stationCode: str | None = config_entry.data.get(CONF_STATION_CODE) or None
     pollenStationCode: str | None = (
@@ -176,9 +170,7 @@ async def async_setup_entry(
         )
 
     if pollenStationCode is not None:
-        pollenCoordinator = hass.data[DOMAIN][
-            get_pollen_coordinator_key(config_entry)
-        ]
+        pollenCoordinator = runtime_data.pollen_coordinator
         pollen_device = DeviceInfo(
             entry_type=DeviceEntryType.SERVICE,
             name=pollen_station_name,
