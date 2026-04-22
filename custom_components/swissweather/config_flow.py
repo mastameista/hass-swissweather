@@ -26,6 +26,7 @@ from .const import (
     CONF_POST_CODE,
     CONF_STATION_CODE,
     CONF_STATION_NAME,
+    CONF_WARNINGS_ENABLED,
     CONF_WEATHER_WARNINGS_NUMBER,
     DOMAIN,
 )
@@ -70,7 +71,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._pending_forecast_matches: list[Any] = []
         self._selected_forecast_point_id: str | None = None
         self._selected_forecast_point_type: str | None = None
-        self._selected_forecast_name: str | None = None
         self._last_forecast_query: str = ""
         self._forecast_points_cache: list[Any] | None = None
         self._weather_stations_cache: list[WeatherStation] | None = None
@@ -120,7 +120,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._pending_forecast_matches = []
                 self._selected_forecast_point_id = None
                 self._selected_forecast_point_type = None
-                self._selected_forecast_name = None
                 return await self._show_forecast_search_form(
                     self._active_step_id(),
                     user_input={CONF_FORECAST_QUERY: self._last_forecast_query},
@@ -133,7 +132,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._set_selected_forecast_point(
                     selected_point.point_id,
                     selected_point.point_type_id,
-                    selected_point.display_name,
                 )
                 unique_id = build_entry_unique_id(selected_point.point_id)
                 if unique_id is not None:
@@ -258,9 +256,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         if default_pollen_station_code is None:
             default_pollen_station_code = NO_POLLEN_STATION_OPTION
-        default_weather_warnings = (user_input or {}).get(
-            CONF_WEATHER_WARNINGS_NUMBER,
-            existing_data.get(CONF_WEATHER_WARNINGS_NUMBER, 1),
+        default_warnings_enabled = (user_input or {}).get(
+            CONF_WARNINGS_ENABLED,
+            existing_data.get(
+                CONF_WARNINGS_ENABLED,
+                bool(existing_data.get(CONF_WEATHER_WARNINGS_NUMBER, 1)),
+            ),
         )
 
         schema = vol.Schema(
@@ -281,9 +282,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     )
                 ),
                 vol.Required(
-                    CONF_WEATHER_WARNINGS_NUMBER,
-                    default=default_weather_warnings,
-                ): int,
+                    CONF_WARNINGS_ENABLED,
+                    default=default_warnings_enabled,
+                ): bool,
             }
         )
         step_id = "reconfigure" if origin_step == "reconfigure" else "details"
@@ -331,16 +332,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._pending_forecast_matches = matches
         self._selected_forecast_point_id = None
         self._selected_forecast_point_type = None
-        self._selected_forecast_name = None
         return await self.async_step_forecast_pick()
 
     def _set_selected_forecast_point(
-        self, point_id: str, point_type_id: str | None, point_name: str
+        self, point_id: str, point_type_id: str | None
     ) -> None:
         """Cache the selected forecast point between steps."""
         self._selected_forecast_point_id = str(point_id).strip()
         self._selected_forecast_point_type = point_type_id
-        self._selected_forecast_name = point_name
 
     def _active_step_id(self) -> str:
         """Return the current top-level step origin."""
@@ -451,7 +450,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         pollen_stations = await self._async_get_pollen_stations()
         station_code = user_input.get(CONF_STATION_CODE)
         pollen_station_code = user_input.get(CONF_POLLEN_STATION_CODE)
-
         if station_code == NO_WEATHER_STATION_OPTION:
             station_code = None
         if pollen_station_code == NO_POLLEN_STATION_OPTION:
@@ -476,7 +474,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         resolved_data[CONF_FORECAST_NAME] = (
             (forecast_point.display_name if forecast_point is not None else "")
-            or self._selected_forecast_name
             or str(post_code).strip()
         )
 
@@ -501,6 +498,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if pollen_station is not None
             else None
         )
+        resolved_data[CONF_WARNINGS_ENABLED] = bool(
+            user_input.get(
+                CONF_WARNINGS_ENABLED,
+                resolved_data.get(CONF_WARNINGS_ENABLED, True),
+            )
+        )
+        resolved_data.pop(CONF_WEATHER_WARNINGS_NUMBER, None)
         resolved_data.pop(CONF_FORECAST_QUERY, None)
         resolved_data.pop(CONF_FORECAST_POINT, None)
         return resolved_data
