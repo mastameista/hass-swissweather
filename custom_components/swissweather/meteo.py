@@ -66,6 +66,10 @@ ICON_TO_CONDITION_MAP: dict[int, str] = {
     for icon in icons
 }
 
+# MeteoSwiss uses 32767 (Int16 max) as a "no data" sentinel in the plzDetail
+# currentWeather block.
+MISSING_VALUE_SENTINEL = 32767
+
 
 class MeteoSwissClientError(Exception):
     """Base error for MeteoSwiss client failures."""
@@ -437,12 +441,21 @@ class MeteoClient:
     def _get_current_state(self, forecastJson) -> CurrentState | None:
         if "currentWeather" not in forecastJson:
             return None
-        currentIcon = to_int(forecastJson.get("currentWeather", {}).get("icon", None))
+        currentWeather = forecastJson.get("currentWeather", {})
+
+        currentIcon = to_int(currentWeather.get("iconV2", None))
+        if currentIcon == MISSING_VALUE_SENTINEL:
+            currentIcon = None
         currentCondition = (
             None if currentIcon is None else ICON_TO_CONDITION_MAP.get(currentIcon)
         )
+
+        currentTemperature = to_float(currentWeather.get("temperature"))
+        if currentTemperature == MISSING_VALUE_SENTINEL:
+            currentTemperature = None
+
         return CurrentState(
-            (to_float(forecastJson.get("currentWeather", {}).get("temperature")), "°C"),
+            (currentTemperature, "°C"),
             currentIcon,
             currentCondition,
         )
