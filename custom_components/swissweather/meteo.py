@@ -311,13 +311,13 @@ class MeteoClient:
         return CurrentWeather(
             csv_row.get("Station/Location"),
             timestamp,
-            (to_float(csv_row.get("tre200s0", None)), "C"),
+            (to_float(csv_row.get("tre200s0", None)), "°C"),
             (to_float(csv_row.get("rre150z0", None)), "mm"),
             (to_float(csv_row.get("sre000z0", None)), "min"),
-            (to_float(csv_row.get("gre000z0", None)), "W/m2"),
+            (to_float(csv_row.get("gre000z0", None)), "W/m²"),
             (to_float(csv_row.get("ure200s0", None)), "%"),
-            (to_float(csv_row.get("tde200s0", None)), "C"),
-            (to_float(csv_row.get("dkl010z0", None)), "deg"),
+            (to_float(csv_row.get("tde200s0", None)), "°C"),
+            (to_float(csv_row.get("dkl010z0", None)), "°"),
             (to_float(csv_row.get("fu3010z0", None)), "km/h"),
             (to_float(csv_row.get("fu3010z1", None)), "km/h"),
             (to_float(csv_row.get("prestas0", None)), "hPa"),
@@ -365,7 +365,7 @@ class MeteoClient:
             None if currentIcon is None else ICON_TO_CONDITION_MAP.get(currentIcon)
         )
         return CurrentState(
-            (to_float(forecastJson.get("currentWeather", {}).get("temperature")), "C"),
+            (to_float(forecastJson.get("currentWeather", {}).get("temperature")), "°C"),
             currentIcon,
             currentCondition,
         )
@@ -381,8 +381,8 @@ class MeteoClient:
                 timestamp = datetime.strptime(dailyJson["dayDate"], "%Y-%m-%d")
             icon = to_int(dailyJson.get("iconDay", None))
             condition = ICON_TO_CONDITION_MAP.get(icon)
-            temperatureMax = (to_float(dailyJson.get("temperatureMax", None)), "C")
-            temperatureMin = (to_float(dailyJson.get("temperatureMin", None)), "C")
+            temperatureMax = (to_float(dailyJson.get("temperatureMax", None)), "°C")
+            temperatureMin = (to_float(dailyJson.get("temperatureMin", None)), "°C")
             precipitation = (to_float(dailyJson.get("precipitation", None)), "mm/h")
             forecast.append(
                 Forecast(
@@ -408,9 +408,9 @@ class MeteoClient:
         startTimestamp = datetime.fromtimestamp(startTimestampEpoch / 1000, UTC)
 
         forecast = []
-        temperatureMaxList = [(value, "C") for value in graphJson.get("temperatureMax1h", [])]
-        temperatureMeanList = [(value, "C") for value in graphJson.get("temperatureMean1h", [])]
-        temperatureMinList = [(value, "C") for value in graphJson.get("temperatureMin1h", [])]
+        temperatureMaxList = [(value, "°C") for value in graphJson.get("temperatureMax1h", [])]
+        temperatureMeanList = [(value, "°C") for value in graphJson.get("temperatureMean1h", [])]
+        temperatureMinList = [(value, "°C") for value in graphJson.get("temperatureMin1h", [])]
         windGustSpeedList = [(value, "km/h") for value in graphJson.get("gustSpeed1h", [])]
         windSpeedList = [(value, "km/h") for value in graphJson.get("windSpeed1h", [])]
         sunshineList = [(value, "min/h") for value in graphJson.get("sunshine1h", [])]
@@ -446,7 +446,7 @@ class MeteoClient:
         )
         windDirectionList = list(
             itertools.chain.from_iterable(
-                itertools.repeat((x, "deg"), 3)
+                itertools.repeat((x, "°"), 3)
                 for x in graphJson.get("windDirection3h", [])
             )
         )
