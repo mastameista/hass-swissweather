@@ -87,7 +87,7 @@ class SwissWeatherRuntimeData:
     """Runtime objects stored on the config entry."""
 
     weather_coordinator: SwissWeatherDataCoordinator
-    pollen_coordinator: SwissPollenDataCoordinator
+    pollen_coordinator: SwissPollenDataCoordinator | None
 
 
 @dataclass
@@ -511,9 +511,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _async_cleanup_disabled_warning_entities(hass, entry)
 
     coordinator = SwissWeatherDataCoordinator(hass, entry)
-    pollen_coordinator = SwissPollenDataCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
-    await pollen_coordinator.async_config_entry_first_refresh()
+    pollen_coordinator: SwissPollenDataCoordinator | None = None
+    if entry.data.get(CONF_POLLEN_STATION_CODE):
+        pollen_coordinator = SwissPollenDataCoordinator(hass, entry)
+        await pollen_coordinator.async_config_entry_first_refresh()
+
     entry.runtime_data = SwissWeatherRuntimeData(
         weather_coordinator=coordinator,
         pollen_coordinator=pollen_coordinator,

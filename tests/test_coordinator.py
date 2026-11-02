@@ -189,8 +189,9 @@ def test_pollen_coordinator_classifies_invalid_payload(monkeypatch):
     from custom_components.swissweather import coordinator as coordinator_module
 
     class _FakePollenClient:
-        def __init__(self, session):
+        def __init__(self, session, language="en"):
             self.session = session
+            self.language = language
 
         async def async_get_current_pollen_for_station(self, station_code):
             raise PollenDataError("bad payload")

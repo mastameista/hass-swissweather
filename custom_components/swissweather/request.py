@@ -7,9 +7,16 @@ from collections.abc import Awaitable, Callable
 import logging
 from typing import TypeVar
 
-from aiohttp import ClientConnectionError, ClientResponseError, ClientSession
+from aiohttp import (
+    ClientConnectionError,
+    ClientResponseError,
+    ClientSession,
+    ClientTimeout,
+)
 
-REQUEST_TIMEOUT = 10
+# Per-attempt budget. Requests are retried on transient failures, so this is
+# deliberately shorter than a single-shot client would use.
+REQUEST_TIMEOUT = ClientTimeout(total=10, sock_connect=5)
 _RETRY_DELAYS = (0.25, 0.75)
 _RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 

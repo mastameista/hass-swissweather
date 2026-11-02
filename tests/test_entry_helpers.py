@@ -413,12 +413,26 @@ def test_sync_entry_device_names_updates_existing_pollen_device(monkeypatch):
     assert device_registry.updated == [("pollen-device", "Davos / Wolfgang GR")]
 
 
-def test_async_setup_entry_rechecks_legacy_devices_after_platform_setup(monkeypatch):
+@pytest.mark.parametrize(
+    ("entry_data", "expected_refreshes", "expect_pollen_coordinator"),
+    [
+        ({}, ["refresh-weather"], False),
+        (
+            {CONF_POLLEN_STATION_CODE: "PBE"},
+            ["refresh-weather", "refresh-pollen"],
+            True,
+        ),
+    ],
+    ids=["without-pollen-station", "with-pollen-station"],
+)
+def test_async_setup_entry_rechecks_legacy_devices_after_platform_setup(
+    monkeypatch, entry_data, expected_refreshes, expect_pollen_coordinator
+):
     from custom_components.swissweather import __init__ as init_module
 
     cleanup_calls: list[str] = []
     call_order: list[str] = []
-    entry = SimpleNamespace(data={}, entry_id="entry-1")
+    entry = SimpleNamespace(data=entry_data, entry_id="entry-1")
     metadata = SwissWeatherMetadata([], [], [])
 
     async def passthrough_step(hass, current_entry, *args):
@@ -446,12 +460,20 @@ def test_async_setup_entry_rechecks_legacy_devices_after_platform_setup(monkeypa
         return None
 
     class FakeCoordinator:
+        label = ""
+
         def __init__(self, hass, current_entry):
             del hass
             assert current_entry is entry
 
         async def async_config_entry_first_refresh(self):
-            call_order.append("refresh")
+            call_order.append(f"refresh-{self.label}")
+
+    class FakeWeatherCoordinator(FakeCoordinator):
+        label = "weather"
+
+    class FakePollenCoordinator(FakeCoordinator):
+        label = "pollen"
 
     async def fake_forward_entry_setups(current_entry, platforms):
         assert current_entry is entry
@@ -468,8 +490,8 @@ def test_async_setup_entry_rechecks_legacy_devices_after_platform_setup(monkeypa
     monkeypatch.setattr(init_module, "_async_cleanup_optional_devices", fake_noop)
     monkeypatch.setattr(init_module, "_async_cleanup_legacy_warning_entities", fake_noop)
     monkeypatch.setattr(init_module, "_async_cleanup_disabled_warning_entities", fake_noop)
-    monkeypatch.setattr(init_module, "SwissWeatherDataCoordinator", FakeCoordinator)
-    monkeypatch.setattr(init_module, "SwissPollenDataCoordinator", FakeCoordinator)
+    monkeypatch.setattr(init_module, "SwissWeatherDataCoordinator", FakeWeatherCoordinator)
+    monkeypatch.setattr(init_module, "SwissPollenDataCoordinator", FakePollenCoordinator)
 
     hass = SimpleNamespace(
         config_entries=SimpleNamespace(async_forward_entry_setups=AsyncMock(side_effect=fake_forward_entry_setups))
@@ -481,12 +503,14 @@ def test_async_setup_entry_rechecks_legacy_devices_after_platform_setup(monkeypa
     assert cleanup_calls == ["entry-1", "entry-1"]
     assert call_order == [
         "cleanup-1",
-        "refresh",
-        "refresh",
+        *expected_refreshes,
         "forward",
         "sync-device-names",
         "cleanup-2",
     ]
+    # Without a pollen station no pollen coordinator is created at all, so no
+    # idle hourly refresh is scheduled for it.
+    assert (entry.runtime_data.pollen_coordinator is not None) is expect_pollen_coordinator
 
 
 def test_sync_repairs_issues_creates_issue_for_missing_forecast_point(monkeypatch):

@@ -52,3 +52,31 @@ def test_current_state_returns_none_without_current_weather():
     client = MeteoClient(session=object())
 
     assert client._get_current_state({}) is None
+
+
+def test_current_state_falls_back_to_legacy_icon_when_icon_v2_unusable():
+    client = MeteoClient(session=object())
+
+    state = client._get_current_state(
+        {
+            "currentWeather": {
+                "icon": 1,
+                "iconV2": MISSING_VALUE_SENTINEL,
+                "temperature": 4.0,
+            }
+        }
+    )
+
+    assert state.currentIcon == 1
+    assert state.currentCondition == "sunny"
+
+
+def test_current_state_ignores_legacy_icon_sentinel():
+    client = MeteoClient(session=object())
+
+    state = client._get_current_state(
+        {"currentWeather": {"icon": MISSING_VALUE_SENTINEL, "temperature": 4.0}}
+    )
+
+    assert state.currentIcon is None
+    assert state.currentCondition is None

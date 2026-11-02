@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 from propcache.api import cached_property
 
@@ -45,7 +45,7 @@ from .const import (
     DOMAIN,
 )
 from .meteo import CurrentWeather, Warning, WarningLevel, WarningType
-from .pollen import CurrentPollen, PollenLevel
+from .pollen import CurrentPollen, PollenLevel, get_pollen_level
 
 _LOGGER = logging.getLogger(__name__)
 WIND_DIRECTION_DEVICE_CLASS = getattr(SensorDeviceClass, "WIND_DIRECTION", None)
@@ -168,8 +168,8 @@ async def async_setup_entry(
             ]
         )
 
-    if pollenStationCode is not None:
-        pollenCoordinator = runtime_data.pollen_coordinator
+    pollenCoordinator = runtime_data.pollen_coordinator
+    if pollenStationCode is not None and pollenCoordinator is not None:
         pollen_device = DeviceInfo(
             entry_type=DeviceEntryType.SERVICE,
             name=pollen_station_name,
@@ -518,15 +518,12 @@ class SwissPollenSensor(CoordinatorEntity[SwissPollenDataCoordinator], SensorEnt
         return "mdi:flower-pollen"
 
 
-def get_color_for_pollen_level(level: int) -> str:
+def get_color_for_pollen_level(level: PollenLevel | None) -> str:
     """Return the icon color for the corresponding pollen level."""
-    if level is not None:
-        if level <= 10:
-            return "gray"
-        if level <= 70:
-            return "amber"
-        if level <= 250:
-            return "red"
+    if level is PollenLevel.MEDIUM:
+        return "amber"
+    if level in (PollenLevel.STRONG, PollenLevel.VERY_STRONG):
+        return "red"
     return "gray"
 
 
@@ -568,17 +565,7 @@ class SwissPollenLevelSensor(CoordinatorEntity[SwissPollenDataCoordinator], Sens
         if self.coordinator.data is None:
             return None
         value = self._sensor_entry.data_function(self.coordinator.data)
-        if value is not None:
-            if value == 0:
-                return PollenLevel.NONE
-            if value <= 10:
-                return PollenLevel.LOW
-            if value <= 70:
-                return PollenLevel.MEDIUM
-            if value <= 250:
-                return PollenLevel.STRONG
-            return PollenLevel.VERY_STRONG
-        return None
+        return get_pollen_level(value, self._sensor_entry.key)
 
     @property
     def extra_state_attributes(self) -> dict[str, any] | None:
@@ -586,7 +573,8 @@ class SwissPollenLevelSensor(CoordinatorEntity[SwissPollenDataCoordinator], Sens
         if self.coordinator.data is None:
             return None
         value = self._sensor_entry.data_function(self.coordinator.data)
-        return {"icon_color": get_color_for_pollen_level(value)}
+        level = get_pollen_level(value, self._sensor_entry.key)
+        return {"icon_color": get_color_for_pollen_level(level)}
 
     @cached_property
     def icon(self):

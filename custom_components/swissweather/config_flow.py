@@ -5,7 +5,6 @@ import logging
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.data_entry_flow import AbortFlow
@@ -60,6 +59,9 @@ SEARCH_AGAIN_OPTION = "__search_again__"
 NO_POLLEN_STATION_OPTION = "__no_pollen_station__"
 NO_WEATHER_STATION_OPTION = "__no_weather_station__"
 MAX_FORECAST_POINT_RESULTS = 50
+# Sort key for stations without usable coordinates: farther than any
+# distance inside Switzerland, so such stations end up last.
+_UNKNOWN_DISTANCE_KM = 999_000.0
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -399,13 +401,19 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ],
         ]
 
-    def _get_distance_to_station(self, station: WeatherStation) -> float | None:
-        """Return the distance from HA home location to a station."""
+    def _get_distance_to_station(self, station: WeatherStation) -> float:
+        """Return the distance in km from the HA home location to a station.
+
+        Unknown distances sort last instead of breaking the sort with a None key.
+        """
         h_lat = self.hass.config.latitude
         h_lng = self.hass.config.longitude
         if h_lat is None or h_lng is None:
-            return None
-        return distance(h_lat, h_lng, station.lat, station.lng)
+            return _UNKNOWN_DISTANCE_KM
+        d = distance(h_lat, h_lng, station.lat, station.lng)
+        if d is None:
+            return _UNKNOWN_DISTANCE_KM
+        return d
 
     async def _async_get_forecast_points(self) -> list[Any]:
         """Load forecast-point metadata once per flow instance."""
@@ -428,7 +436,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Load pollen-station metadata once per flow instance."""
         if self._pollen_stations_cache is None:
             self._pollen_stations_cache = await async_load_pollen_station_list(
-                PollenClient(async_get_clientsession(self.hass))
+                PollenClient(
+                    async_get_clientsession(self.hass), self.hass.config.language
+                )
             )
         return self._pollen_stations_cache
 

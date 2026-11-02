@@ -55,11 +55,16 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     runtime_data = entry.runtime_data
+    pollen_coordinator = runtime_data.pollen_coordinator
     return async_redact_data(
         {
             "entry": entry.as_dict(),
             "weather": _serialize(runtime_data.weather_coordinator.data),
-            "pollen": _serialize(runtime_data.pollen_coordinator.data),
+            "pollen": (
+                _serialize(pollen_coordinator.data)
+                if pollen_coordinator is not None
+                else None
+            ),
         },
         TO_REDACT,
     )

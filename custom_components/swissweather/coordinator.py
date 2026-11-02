@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import datetime
 from dataclasses import dataclass
-from datetime import UTC, timedelta
 import logging
+from datetime import UTC, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -25,7 +25,6 @@ from .meteo import (
     MeteoSwissConnectionError,
     MeteoSwissDataError,
     Warning,
-    WarningLevel,
     WeatherForecast,
 )
 from .pollen import (
@@ -111,8 +110,7 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
         self._forecast_point_type = config_entry.data.get(CONF_FORECAST_POINT_TYPE)
         self._current_station_unavailable = False
         self._client = MeteoClient(
-            async_get_clientsession(hass),
-            getattr(getattr(hass, "config", None), "language", None),
+            async_get_clientsession(hass), hass.config.language
         )
         update_interval = timedelta(minutes=10)
         super().__init__(
@@ -236,7 +234,9 @@ class SwissPollenDataCoordinator(DataUpdateCoordinator[CurrentPollen | None]):
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
         self._pollen_station_code = config_entry.data.get(CONF_POLLEN_STATION_CODE)
-        self._client = PollenClient(async_get_clientsession(hass))
+        self._client = PollenClient(
+            async_get_clientsession(hass), hass.config.language
+        )
         update_interval = timedelta(minutes=60)
         super().__init__(
             hass,

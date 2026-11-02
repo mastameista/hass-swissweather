@@ -52,8 +52,28 @@ def test_station_row_maps_remaining_measurements():
 def test_missing_pressure_columns_yield_none():
     client = MeteoClient(session=object())
 
-    weather = client._get_current_data_for_row({"Station/Location": "TAE"})
+    weather = client._get_current_data_for_row(
+        {"Station/Location": "TAE", "Date": "202609301200"}
+    )
 
     assert weather.pressureStationLevel == (None, "hPa")
     assert weather.pressureSeaLevel == (None, "hPa")
     assert weather.pressureSeaLevelAtStandardAtmosphere == (None, "hPa")
+
+
+@pytest.mark.parametrize("date", [None, "", "not-a-date", "2026-09-30"])
+def test_row_without_valid_timestamp_is_rejected(date):
+    """A station row that cannot be dated is treated as corrupt, not as current data."""
+    client = MeteoClient(session=object())
+    row = {**STATION_ROW, "Date": date}
+
+    assert client._get_current_data_for_row(row) is None
+
+
+def test_row_timestamp_is_timezone_aware_utc():
+    client = MeteoClient(session=object())
+
+    weather = client._get_current_data_for_row(STATION_ROW)
+
+    assert weather.date.tzinfo is not None
+    assert weather.date.utcoffset().total_seconds() == 0
