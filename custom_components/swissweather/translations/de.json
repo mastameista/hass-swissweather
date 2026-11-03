@@ -69,6 +69,9 @@
     "binary_sensor": {
       "has_warnings": {
         "name": "Hat Wetterwarnungen"
+      },
+      "has_active_warnings": {
+        "name": "Hat aktive Wetterwarnungen"
       }
     },
     "sensor": {

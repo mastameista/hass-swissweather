@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import datetime
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import logging
 from datetime import UTC, timedelta
 
@@ -49,6 +49,8 @@ class WarningSnapshot:
     tertiary: Warning | None
     count: int
     highest_level: int | None
+    upcoming_warnings: list[Warning] = field(default_factory=list)
+    next_warning_start: datetime.datetime | None = None
 
 
 @dataclass
@@ -69,6 +71,9 @@ def build_warning_snapshot(
     all_warnings = list(warnings or [])
     active_warnings = [warning for warning in all_warnings if warning.is_active(now)]
     display_warnings = [warning for warning in all_warnings if not warning.is_expired(now)]
+    upcoming_warnings = [
+        warning for warning in display_warnings if not warning.is_active(now)
+    ]
 
     sorted_warnings = sorted(
         display_warnings,
@@ -96,6 +101,11 @@ def build_warning_snapshot(
         tertiary=sorted_warnings[2] if len(sorted_warnings) > 2 else None,
         count=len(sorted_warnings),
         highest_level=highest_level,
+        upcoming_warnings=upcoming_warnings,
+        next_warning_start=min(
+            (warning.validFrom for warning in upcoming_warnings if warning.validFrom),
+            default=None,
+        ),
     )
 
 

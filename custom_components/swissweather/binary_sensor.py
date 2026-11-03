@@ -32,7 +32,10 @@ async def async_setup_entry(
         [
             SwissWeatherHasWarningsBinarySensor(
                 post_code, forecast_name, forecast_device, coordinator
-            )
+            ),
+            SwissWeatherHasActiveWarningsBinarySensor(
+                post_code, forecast_name, forecast_device, coordinator
+            ),
         ]
     )
 
@@ -69,3 +72,37 @@ class SwissWeatherHasWarningsBinarySensor(
     @property
     def icon(self) -> str:
         return "mdi:alert-outline"
+
+
+class SwissWeatherHasActiveWarningsBinarySensor(
+    CoordinatorEntity[SwissWeatherDataCoordinator], BinarySensorEntity
+):
+    """Expose whether a warning is in force right now, ignoring announced ones."""
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        post_code: str,
+        forecast_name: str,
+        device_info: DeviceInfo,
+        coordinator: SwissWeatherDataCoordinator,
+    ) -> None:
+        super().__init__(coordinator)
+        self._attr_translation_key = "has_active_warnings"
+        self._attr_unique_id = f"{post_code}.has_active_warnings"
+        self._attr_suggested_object_id = (
+            f"has_active_weather_warnings_{slugify(forecast_name)}"
+        )
+        self._attr_device_info = device_info
+        self._attr_attribution = "Source: MeteoSwiss"
+
+    @property
+    def is_on(self) -> bool | None:
+        if self.coordinator.data is None:
+            return None
+        return len(self.coordinator.data.warning_snapshot.active_warnings) > 0
+
+    @property
+    def icon(self) -> str:
+        return "mdi:alert"

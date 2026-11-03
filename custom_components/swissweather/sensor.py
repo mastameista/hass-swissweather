@@ -312,6 +312,17 @@ class SwissWeatherWarningCountSensor(
             return None
         return self.coordinator.data.warning_snapshot.count
 
+    @property
+    def extra_state_attributes(self) -> dict[str, StateType] | None:
+        if self.coordinator.data is None:
+            return None
+        snapshot = self.coordinator.data.warning_snapshot
+        return {
+            "active_count": len(snapshot.active_warnings),
+            "upcoming_count": len(snapshot.upcoming_warnings),
+            "next_warning_start": snapshot.next_warning_start,
+        }
+
     @cached_property
     def icon(self):
         return "mdi:alert-plus-outline"
@@ -412,6 +423,14 @@ class SwissWeatherWarningSlotSensor(
             2: self.coordinator.data.warning_snapshot.tertiary,
         }[self._slot_index]
 
+    def _is_active(self, warning: Warning) -> bool:
+        # Judge against the snapshot rather than the clock so this attribute and
+        # the has_active_warnings binary sensor can never disagree.
+        return any(
+            active is warning
+            for active in self.coordinator.data.warning_snapshot.active_warnings
+        )
+
     @property
     def native_value(self) -> StateType | Decimal:
         warning = self._warning()
@@ -433,6 +452,7 @@ class SwissWeatherWarningSlotSensor(
                 "valid_from": None,
                 "valid_to": None,
                 "outlook": None,
+                "active": None,
                 "text": None,
                 "html_text": None,
                 "links": [],
@@ -455,6 +475,7 @@ class SwissWeatherWarningSlotSensor(
             "valid_from": warning.validFrom,
             "valid_to": warning.validTo,
             "outlook": warning.outlook,
+            "active": self._is_active(warning),
             "text": warning.text,
             "html_text": warning.htmlText,
             "links": [link.as_dict() for link in warning.links],

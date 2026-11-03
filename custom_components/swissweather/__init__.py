@@ -70,6 +70,7 @@ _LEGACY_WARNING_ENTITY_RE = re.compile(
 )
 _WARNING_ENTITY_SUFFIXES = (
     "has_warnings",
+    "has_active_warnings",
     "warning_count",
     "highest_warning_level",
     "primary_warning",
@@ -213,6 +214,13 @@ async def _async_cleanup_legacy_warning_entities(
 ) -> None:
     """Remove warning entities from the legacy numbered warning model."""
     entity_registry = er.async_get(hass)
+    post_code = str(entry.data.get(CONF_POST_CODE, "")).strip()
+    # The legacy patterns match on entity_id, which also fits current entities
+    # (e.g. "..._has_active_weather_warnings") and anything a user renamed.
+    # The unique_id is what identifies an entity of the current model.
+    current_unique_ids = {
+        f"{post_code}.{suffix}" for suffix in _WARNING_ENTITY_SUFFIXES
+    }
     removed_count = 0
     for entity_entry in list(entity_registry.entities.values()):
         if entity_entry.platform != DOMAIN:
@@ -221,7 +229,7 @@ async def _async_cleanup_legacy_warning_entities(
             continue
         unique_id = entity_entry.unique_id or ""
         entity_id = entity_entry.entity_id or ""
-        if entity_id.endswith("_has_weather_warnings"):
+        if unique_id in current_unique_ids:
             continue
         if (
             _LEGACY_WARNING_INDEX_RE.match(unique_id)
