@@ -18,7 +18,9 @@ logger = logging.getLogger(__name__)
 CURRENT_CONDITION_URL = (
     "https://data.geo.admin.ch/ch.meteoschweiz.messwerte-aktuell/VQHA80.csv"
 )
-FORECAST_URL = "https://app-prod-ws.meteoswiss-app.ch/v2/plzDetail?plz={}"
+# v3 rather than v2: v2 silently omits drought warnings (warnType 12); the
+# forecast payload is otherwise identical.
+FORECAST_URL = "https://app-prod-ws.meteoswiss-app.ch/v3/plzDetail?plz={}"
 FORECAST_USER_AGENT = "android-31 ch.admin.meteoswiss-2160000"
 # Languages MeteoSwiss publishes its data in.
 DEFAULT_LANGUAGE = "en"

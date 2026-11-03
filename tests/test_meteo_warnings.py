@@ -7,7 +7,15 @@ import pytest
 
 pytest.importorskip("homeassistant")
 
-from custom_components.swissweather.meteo import MeteoClient, MeteoSwissDataError
+from datetime import UTC, datetime
+
+from custom_components.swissweather.meteo import (
+    FORECAST_URL,
+    MeteoClient,
+    MeteoSwissDataError,
+    WarningLevel,
+    WarningType,
+)
 
 
 def test_warning_parser_raises_when_all_warning_entries_are_invalid():
@@ -62,3 +70,41 @@ def test_async_get_forecast_ignores_invalid_warning_payload(monkeypatch):
     assert forecast.dailyForecast == []
     assert forecast.hourlyForecast == []
     assert forecast.warnings == []
+
+
+def test_forecast_url_uses_v3_endpoint():
+    """Regression: v2/plzDetail drops drought warnings, v3 delivers them."""
+    assert "/v3/plzDetail" in FORECAST_URL
+
+
+def test_drought_warning_without_end_is_parsed_and_active():
+    """Drought warnings arrive open-ended (no validTo) and carry a regionId."""
+    client = MeteoClient(session=object())
+
+    # Shape taken from a live v3 response for 8620 Wetzikon (2026-11-03).
+    warnings = client._get_weather_warnings(
+        {
+            "warnings": [
+                {
+                    "warnType": 12,
+                    "warnLevel": 4,
+                    "text": "- Auswirkungen: ...",
+                    "htmlText": "<b>- Auswirkungen: </b>...",
+                    "outlook": False,
+                    "validFrom": 1782338400000,
+                    "links": [],
+                    "ordering": "a2n1782338400000",
+                    "regionId": 43,
+                }
+            ]
+        }
+    )
+
+    assert len(warnings) == 1
+    warning = warnings[0]
+    assert warning.warningType == WarningType.DROUGHT
+    assert warning.warningLevel == WarningLevel(4)
+    assert warning.validFrom == datetime(2026, 6, 24, 22, 0, tzinfo=UTC)
+    assert warning.validTo is None
+    assert warning.is_active(datetime(2026, 11, 3, tzinfo=UTC))
+    assert not warning.is_expired(datetime(2030, 1, 1, tzinfo=UTC))
