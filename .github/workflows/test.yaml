@@ -31,7 +31,7 @@ jobs:
         env:
           PYTHONPATH: .
         run: |
-          pytest --cov=custom_components/swissweather --cov-report=term tests
+          pytest --cov=custom_components/swissweather --cov-report=term-missing tests
 
       - name: Publish coverage summary
         if: always()
