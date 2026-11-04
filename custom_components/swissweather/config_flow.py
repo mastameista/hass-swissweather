@@ -55,9 +55,9 @@ _LOGGER = logging.getLogger(__name__)
 
 CONF_FORECAST_QUERY = "forecast_query"
 CONF_FORECAST_POINT = "forecast_point"
-SEARCH_AGAIN_OPTION = "__search_again__"
-NO_POLLEN_STATION_OPTION = "__no_pollen_station__"
-NO_WEATHER_STATION_OPTION = "__no_weather_station__"
+SEARCH_AGAIN_OPTION = "search_again"
+NO_POLLEN_STATION_OPTION = "no_pollen_station"
+NO_WEATHER_STATION_OPTION = "no_weather_station"
 MAX_FORECAST_POINT_RESULTS = 50
 
 

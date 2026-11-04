@@ -61,3 +61,19 @@ def test_every_config_flow_selector_is_translated():
     fixed_values = set(re.findall(r'^[A-Z_]+_OPTION = "(\w+)"', source, re.M))
     translated = {value for sel in selectors.values() for value in sel["options"]}
     assert fixed_values == translated, (fixed_values, translated)
+
+
+def test_translation_keys_follow_the_hassfest_pattern():
+    """hassfest rejects keys outside [a-z0-9-_] or starting/ending with - or _."""
+    valid = re.compile(r"^[a-z0-9]([a-z0-9_-]*[a-z0-9])?$")
+
+    def keys(node: dict):
+        for key, value in node.items():
+            yield key
+            if isinstance(value, dict):
+                yield from keys(value)
+
+    strings = _load("strings.json")
+    checked = {k for section in ("selector", "exceptions", "entity", "issues") for k in keys(strings.get(section, {}))}
+    bad = sorted(k for k in checked if not valid.match(k))
+    assert not bad, bad

@@ -213,17 +213,17 @@
   "selector": {
     "forecast_point": {
       "options": {
-        "__search_again__": "Search again"
+        "search_again": "Search again"
       }
     },
     "weather_station": {
       "options": {
-        "__no_weather_station__": "No weather station"
+        "no_weather_station": "No weather station"
       }
     },
     "pollen_station": {
       "options": {
-        "__no_pollen_station__": "No pollen station"
+        "no_pollen_station": "No pollen station"
       }
     }
   }
