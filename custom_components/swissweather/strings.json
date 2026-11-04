@@ -57,8 +57,7 @@
       "forecast_query_required": "Enter a forecast place search term.",
       "forecast_query_too_short": "Enter at least 2 letters or an exact postal code / point ID.",
       "forecast_query_metadata_unavailable": "Forecast places are temporarily unavailable. Try again in a moment.",
-      "forecast_query_not_found": "No matching forecast places were found.",
-      "invalid_forecast_point": "Select one of the matching forecast places."
+      "forecast_query_not_found": "No matching forecast places were found."
     },
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",

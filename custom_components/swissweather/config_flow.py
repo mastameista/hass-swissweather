@@ -111,10 +111,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle forecast point confirmation/selection after a search."""
-        if not self._pending_forecast_matches:
-            return await self._show_forecast_search_form(self._active_step_id())
-
-        errors: dict[str, str] = {}
         if user_input is not None:
             if user_input.get(CONF_FORECAST_POINT) == SEARCH_AGAIN_OPTION:
                 self._pending_forecast_matches = []
@@ -139,7 +135,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._abort_if_unique_id_configured()
                 self._abort_if_forecast_point_already_configured(selected_point.point_id)
                 return await self._show_details_form(self._active_step_id())
-            errors[CONF_FORECAST_POINT] = "invalid_forecast_point"
 
         options = [
             SelectOptionDict(value=point.point_id, label=format_forecast_point_label(point))
@@ -159,11 +154,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
             }
         )
-        return self.async_show_form(
-            step_id="forecast_pick",
-            data_schema=schema,
-            errors=errors,
-        )
+        return self.async_show_form(step_id="forecast_pick", data_schema=schema)
 
     async def async_step_details(
         self, user_input: dict[str, Any] | None = None
@@ -207,14 +198,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Show the forecast search form."""
         default_query = self._last_forecast_query
-        if origin_step == "reconfigure":
-            reconfigure_entry = self._get_reconfigure_entry()
-            if reconfigure_entry is not None:
-                default_query = (
-                    self._last_forecast_query
-                    or reconfigure_entry.data.get(CONF_FORECAST_NAME)
-                    or reconfigure_entry.data.get(CONF_POST_CODE, "")
-                )
 
         schema = probatio.Schema(
             {
@@ -354,11 +337,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Abort if a legacy entry without unique_id already uses this forecast point."""
         normalized_point_id = str(point_id).strip()
         for entry in self._async_current_entries():
-            if entry.data.get(CONF_POST_CODE) != normalized_point_id:
-                continue
-            if entry.entry_id == self.context.get("entry_id"):
-                continue
-            raise AbortFlow("already_configured")
+            if entry.data.get(CONF_POST_CODE) == normalized_point_id:
+                raise AbortFlow("already_configured")
 
     def format_station_name_for_dropdown(self, station: WeatherStation) -> str:
         """Format a weather/pollen station option for the dropdown."""

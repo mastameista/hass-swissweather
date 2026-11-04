@@ -215,3 +215,84 @@ async def test_unreadable_forecast_blocks_entry_creation(hass, meteoswiss_api):
     )
 
     assert result["errors"] == {"base": "unknown"}
+
+
+async def test_legacy_entry_without_unique_id_is_detected_as_duplicate(hass, meteoswiss_api):
+    """Entries created before unique IDs existed only carry the place in their data."""
+    MockConfigEntry(domain=DOMAIN, data={CONF_POST_CODE: "800100"}, version=2).add_to_hass(hass)
+    result = await _start(hass)
+    result = await _step(hass, result["flow_id"], {QUERY: "8001"})
+
+    result = await _step(hass, result["flow_id"], {POINT: "800100"})
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+
+
+@pytest.mark.parametrize(
+    ("body", "error"),
+    [
+        # A JSON null: the service answered but sent no forecast.
+        ("null", "cannot_connect"),
+        # Valid JSON of the wrong shape: unexpected, reported as unknown.
+        ("[]", "unknown"),
+    ],
+)
+async def test_connectivity_check_rejects_unusable_answers(hass, meteoswiss_api, body, error):
+    result = await _start(hass)
+    result = await _step(hass, result["flow_id"], {QUERY: "8001"})
+    result = await _step(hass, result["flow_id"], {POINT: "800100"})
+    meteoswiss_api.override(
+        FORECAST_URL.format("800100"), text=body, headers={"Content-Type": "application/json"}
+    )
+
+    result = await _step(
+        hass,
+        result["flow_id"],
+        {
+            CONF_STATION_CODE: NO_WEATHER_STATION_OPTION,
+            CONF_POLLEN_STATION_CODE: NO_POLLEN_STATION_OPTION,
+            CONF_WARNINGS_ENABLED: True,
+        },
+    )
+
+    assert result["errors"] == {"base": error}
+
+
+async def test_reconfigure_reports_an_unreachable_forecast(hass, meteoswiss_api):
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="swissweather_800100",
+        version=2,
+        data={CONF_POST_CODE: "800100", "forecastPointType": "2", CONF_FORECAST_NAME: "Zürich"},
+    )
+    entry.add_to_hass(hass)
+    result = await entry.start_reconfigure_flow(hass)
+    meteoswiss_api.fail(FORECAST_URL.format("800100"))
+
+    result = await _step(
+        hass,
+        result["flow_id"],
+        {
+            CONF_STATION_CODE: NO_WEATHER_STATION_OPTION,
+            CONF_POLLEN_STATION_CODE: NO_POLLEN_STATION_OPTION,
+            CONF_WARNINGS_ENABLED: True,
+        },
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "reconfigure"
+    assert result["errors"] == {"base": "cannot_connect"}
+
+
+async def test_details_step_shows_its_form_when_entered_without_input(hass, meteoswiss_api):
+    result = await _start(hass)
+    result = await _step(hass, result["flow_id"], {QUERY: "8001"})
+    result = await _step(hass, result["flow_id"], {POINT: "800100"})
+    flow = hass.config_entries.flow._progress[result["flow_id"]]
+
+    form = await flow.async_step_details()
+
+    assert form["step_id"] == "details"
+    fields = {str(field) for field in form["data_schema"].schema}
+    assert {CONF_STATION_CODE, CONF_POLLEN_STATION_CODE} <= fields

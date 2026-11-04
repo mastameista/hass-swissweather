@@ -11,8 +11,7 @@
       "forecast_query_required": "Gib einen Suchbegriff für den Prognoseort ein.",
       "forecast_query_too_short": "Gib mindestens 2 Buchstaben oder eine exakte Postleitzahl bzw. Prognosepunkt-ID ein.",
       "forecast_query_metadata_unavailable": "Prognoseorte sind momentan nicht verfügbar. Versuche es gleich noch einmal.",
-      "forecast_query_not_found": "Es wurden keine passenden Prognoseorte gefunden.",
-      "invalid_forecast_point": "Wähle einen der passenden Prognoseorte aus."
+      "forecast_query_not_found": "Es wurden keine passenden Prognoseorte gefunden."
     },
     "step": {
       "user": {
