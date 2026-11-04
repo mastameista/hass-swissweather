@@ -23,7 +23,7 @@ def _leaf_paths(node: dict, prefix: str = "") -> set[str]:
 
 def test_every_language_has_the_same_keys_as_strings_json():
     expected = _leaf_paths(_load("strings.json"))
-    for language in ("en", "de"):
+    for language in ("en", "de", "fr", "it"):
         actual = _leaf_paths(_load(f"translations/{language}.json"))
         assert actual == expected, (
             language,

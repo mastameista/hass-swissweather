@@ -1,0 +1,228 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "L'appareil est déjà configuré",
+      "reconfigure_successful": "La reconfiguration a réussi"
+    },
+    "error": {
+      "cannot_connect": "Échec de la connexion",
+      "unknown": "Erreur inattendue",
+      "forecast_query_required": "Saisissez un terme de recherche pour le lieu de prévision.",
+      "forecast_query_too_short": "Saisissez au moins 2 lettres ou un code postal / identifiant de point exact.",
+      "forecast_query_metadata_unavailable": "Les lieux de prévision sont momentanément indisponibles. Réessayez dans un instant.",
+      "forecast_query_not_found": "Aucun lieu de prévision correspondant n'a été trouvé."
+    },
+    "step": {
+      "user": {
+        "title": "Lieu de prévision",
+        "description": "Recherchez un lieu de prévision par son nom, ou saisissez un code postal ou un identifiant de point MétéoSuisse exact. Les codes postaux, les localités et les points d'intérêt tels que sommets, cols et cabanes sont pris en charge. Vous confirmerez le lieu choisi à l'étape suivante.",
+        "data_description": {
+          "forecast_query": "Recherchez par nom de lieu, code postal, identifiant de point de prévision MétéoSuisse ou point d'intérêt tel qu'un sommet, un col ou une cabane."
+        },
+        "data": {
+          "forecast_query": "Rechercher un lieu de prévision"
+        }
+      },
+      "reconfigure": {
+        "title": "Stations",
+        "data_description": {
+          "stationCode": "Choisissez une station météo proche pour les mesures en direct, ou sélectionnez « Aucune station météo » pour reprendre les conditions actuelles de la prévision.",
+          "pollenStationCode": "Choisissez une station pollen pour les mesures locales, ou sélectionnez « Aucune station pollen » si vous ne souhaitez pas d'entités pollen.",
+          "warningsEnabled": "Crée les entités d'avis de danger pour le lieu choisi : nombre d'avis, degré le plus élevé et avis classés par priorité."
+        },
+        "data": {
+          "stationCode": "Station météo pour les conditions actuelles",
+          "pollenStationCode": "Station de mesure du pollen",
+          "warningsEnabled": "Créer les entités d'avis de danger météo"
+        },
+        "description": "Mettez à jour les stations météo et pollen du lieu de prévision existant."
+      },
+      "forecast_pick": {
+        "title": "Choisir le lieu de prévision",
+        "description": "Choisissez le lieu de prévision à utiliser, ou sélectionnez « Nouvelle recherche ».",
+        "data_description": {
+          "forecast_point": "Sélectionnez le lieu de prévision à utiliser, ou choisissez « Nouvelle recherche » pour affiner la recherche."
+        },
+        "data": {
+          "forecast_point": "Lieux de prévision correspondants"
+        }
+      },
+      "details": {
+        "title": "Stations",
+        "data_description": {
+          "stationCode": "Choisissez une station météo proche pour les mesures en direct, ou sélectionnez « Aucune station météo » pour reprendre les conditions actuelles de la prévision.",
+          "pollenStationCode": "Choisissez une station pollen pour les mesures locales, ou sélectionnez « Aucune station pollen » si vous ne souhaitez pas d'entités pollen.",
+          "warningsEnabled": "Crée les entités d'avis de danger pour le lieu choisi : nombre d'avis, degré le plus élevé et avis classés par priorité."
+        },
+        "data": {
+          "stationCode": "Station météo pour les conditions actuelles",
+          "pollenStationCode": "Station de mesure du pollen",
+          "warningsEnabled": "Créer les entités d'avis de danger météo"
+        },
+        "description": "Choisissez les stations météo et pollen."
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "has_warnings": {
+        "name": "Avis de danger météo"
+      },
+      "has_active_warnings": {
+        "name": "Avis de danger météo en vigueur"
+      }
+    },
+    "sensor": {
+      "time": {
+        "name": "Heure de mesure"
+      },
+      "temperature": {
+        "name": "Température"
+      },
+      "precipitation": {
+        "name": "Précipitations"
+      },
+      "sunshine": {
+        "name": "Ensoleillement"
+      },
+      "global_radiation": {
+        "name": "Rayonnement global"
+      },
+      "humidity": {
+        "name": "Humidité relative"
+      },
+      "dew_point": {
+        "name": "Point de rosée"
+      },
+      "wind_direction": {
+        "name": "Direction du vent"
+      },
+      "wind_speed": {
+        "name": "Vitesse du vent"
+      },
+      "gust_peak1s": {
+        "name": "Rafale maximale 1 s"
+      },
+      "pressure": {
+        "name": "Pression atmosphérique"
+      },
+      "pressure_qff": {
+        "name": "Pression réduite au niveau de la mer (QFF)"
+      },
+      "pressure_qnh": {
+        "name": "Pression réduite au niveau de la mer (QNH)"
+      },
+      "warning_count": {
+        "name": "Nombre d'avis de danger"
+      },
+      "highest_warning_level": {
+        "name": "Degré de danger le plus élevé"
+      },
+      "primary_warning": {
+        "name": "Avis de danger principal"
+      },
+      "secondary_warning": {
+        "name": "Avis de danger secondaire"
+      },
+      "tertiary_warning": {
+        "name": "Avis de danger tertiaire"
+      },
+      "pollen_time": {
+        "name": "Heure de mesure du pollen"
+      },
+      "birch": {
+        "name": "Pollen de bouleau"
+      },
+      "birch_level": {
+        "name": "Niveau de pollen de bouleau"
+      },
+      "grasses": {
+        "name": "Pollen de graminées"
+      },
+      "grasses_level": {
+        "name": "Niveau de pollen de graminées"
+      },
+      "alder": {
+        "name": "Pollen de aulne"
+      },
+      "alder_level": {
+        "name": "Niveau de pollen de aulne"
+      },
+      "hazel": {
+        "name": "Pollen de noisetier"
+      },
+      "hazel_level": {
+        "name": "Niveau de pollen de noisetier"
+      },
+      "beech": {
+        "name": "Pollen de hêtre"
+      },
+      "beech_level": {
+        "name": "Niveau de pollen de hêtre"
+      },
+      "ash": {
+        "name": "Pollen de frêne"
+      },
+      "ash_level": {
+        "name": "Niveau de pollen de frêne"
+      },
+      "oak": {
+        "name": "Pollen de chêne"
+      },
+      "oak_level": {
+        "name": "Niveau de pollen de chêne"
+      }
+    }
+  },
+  "issues": {
+    "missing_forecast_point": {
+      "title": "Le lieu de prévision enregistré pour {entry_title} n'est plus disponible",
+      "description": "L'identifiant de lieu de prévision enregistré `{post_code}` ne figure plus dans les dernières métadonnées de prévision de MétéoSuisse. Supprimez l'entrée et ajoutez-la à nouveau pour choisir un nouveau lieu de prévision."
+    },
+    "missing_weather_station": {
+      "title": "La station météo enregistrée pour {entry_title} n'est plus disponible",
+      "description": "Le code de station météo enregistré `{station_code}` ne figure plus dans les dernières métadonnées des stations de MétéoSuisse. Reconfigurez l'entrée pour choisir une autre station météo, ou supprimez-la."
+    },
+    "missing_pollen_station": {
+      "title": "La station pollen enregistrée pour {entry_title} n'est plus disponible",
+      "description": "Le code de station pollen enregistré `{station_code}` ne figure plus dans les dernières métadonnées pollen de MétéoSuisse. Reconfigurez l'entrée pour choisir une autre station pollen, ou désactivez le pollen pour cette entrée."
+    }
+  },
+  "exceptions": {
+    "forecast_missing": {
+      "message": "MétéoSuisse n'a fourni aucune prévision pour le point {forecast_point}."
+    },
+    "forecast_unreachable": {
+      "message": "Le service de prévision de MétéoSuisse est injoignable : {error}"
+    },
+    "forecast_invalid": {
+      "message": "MétéoSuisse a fourni une prévision illisible : {error}"
+    },
+    "pollen_unreachable": {
+      "message": "Le service pollen de MétéoSuisse est injoignable : {error}"
+    },
+    "pollen_invalid": {
+      "message": "MétéoSuisse a fourni des données pollen illisibles : {error}"
+    },
+    "update_failed": {
+      "message": "La mise à jour des données de MétéoSuisse a échoué : {error}"
+    }
+  },
+  "selector": {
+    "forecast_point": {
+      "options": {
+        "search_again": "Nouvelle recherche"
+      }
+    },
+    "weather_station": {
+      "options": {
+        "no_weather_station": "Aucune station météo"
+      }
+    },
+    "pollen_station": {
+      "options": {
+        "no_pollen_station": "Aucune station pollen"
+      }
+    }
+  }
+}

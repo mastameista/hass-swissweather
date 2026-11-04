@@ -6,7 +6,6 @@
     },
     "error": {
       "cannot_connect": "Failed to connect",
-      "invalid_auth": "Invalid authentication",
       "unknown": "Unexpected error",
       "forecast_query_required": "Enter a forecast place search term.",
       "forecast_query_too_short": "Enter at least 2 letters or an exact postal code / point ID.",
@@ -15,10 +14,10 @@
     },
     "step": {
       "user": {
-        "title": "Forecast Place",
-        "description": "Search a forecast place by name, or enter an exact postal code or MeteoSwiss point ID. ZIP codes, locations and points of interest such as peaks, passes and huts are supported. You will confirm the selected forecast place in the next step.",
+        "title": "Forecast place",
+        "description": "Search a forecast place by name, or enter an exact postal code or MeteoSwiss point ID. Postal codes, locations and points of interest such as peaks, passes and huts are supported. You confirm the selected place in the next step.",
         "data_description": {
-          "forecast_query": "Search by place name, postal code, MeteoSwiss forecast point ID, or points of interest such as peaks, passes, and huts."
+          "forecast_query": "Search by place name, postal code, MeteoSwiss forecast point ID, or points of interest such as peaks, passes and huts."
         },
         "data": {
           "forecast_query": "Forecast place search"
@@ -26,20 +25,20 @@
       },
       "reconfigure": {
         "title": "Stations",
-        "description": "Update the weather and pollen stations for the existing forecast place.",
         "data_description": {
-          "stationCode": "Choose a nearby live weather station, or leave it on No live weather station if you only want forecast-based current conditions.",
-          "pollenStationCode": "Choose a pollen station for local pollen measurements, or leave it disabled if you do not want pollen entities.",
-          "warningsEnabled": "Creates warning entities for the selected forecast place, including warning count, highest level, and prioritized warning slots."
+          "stationCode": "Choose a nearby weather station for live measurements, or select No weather station to take current conditions from the forecast.",
+          "pollenStationCode": "Choose a pollen station for local pollen measurements, or select No pollen station if you do not want pollen entities.",
+          "warningsEnabled": "Creates warning entities for the selected forecast place, including warning count, highest level and prioritized warning slots."
         },
         "data": {
-          "stationCode": "Weather station for current weather state",
+          "stationCode": "Weather station for current conditions",
           "pollenStationCode": "Pollen measuring station",
           "warningsEnabled": "Create weather warning entities"
-        }
+        },
+        "description": "Update the weather and pollen stations for the existing forecast place."
       },
       "forecast_pick": {
-        "title": "Select Forecast Place",
+        "title": "Select forecast place",
         "description": "Choose the forecast place you want to use, or select Search again.",
         "data_description": {
           "forecast_point": "Select the forecast place you want to use, or choose Search again to refine the query."
@@ -50,17 +49,17 @@
       },
       "details": {
         "title": "Stations",
-        "description": "Choose the weather and pollen stations.",
         "data_description": {
-          "stationCode": "Choose a nearby live weather station, or leave it on No live weather station if you only want forecast-based current conditions.",
-          "pollenStationCode": "Choose a pollen station for local pollen measurements, or leave it disabled if you do not want pollen entities.",
-          "warningsEnabled": "Creates warning entities for the selected forecast place, including warning count, highest level, and prioritized warning slots."
+          "stationCode": "Choose a nearby weather station for live measurements, or select No weather station to take current conditions from the forecast.",
+          "pollenStationCode": "Choose a pollen station for local pollen measurements, or select No pollen station if you do not want pollen entities.",
+          "warningsEnabled": "Creates warning entities for the selected forecast place, including warning count, highest level and prioritized warning slots."
         },
         "data": {
-          "stationCode": "Weather station for current weather state",
+          "stationCode": "Weather station for current conditions",
           "pollenStationCode": "Pollen measuring station",
           "warningsEnabled": "Create weather warning entities"
-        }
+        },
+        "description": "Choose the weather and pollen stations."
       }
     }
   },
@@ -178,15 +177,15 @@
   "issues": {
     "missing_forecast_point": {
       "title": "The stored forecast place for {entry_title} is no longer available",
-      "description": "The saved forecast place ID `{post_code}` can no longer be found in the latest MeteoSwiss forecast metadata. Remove the Swiss Weather entry and add it again to choose a new forecast place."
+      "description": "The saved forecast place ID `{post_code}` can no longer be found in the latest MeteoSwiss forecast metadata. Remove the entry and add it again to choose a new forecast place."
     },
     "missing_weather_station": {
       "title": "The stored weather station for {entry_title} is no longer available",
-      "description": "The saved weather station code `{station_code}` can no longer be found in the latest MeteoSwiss station metadata. Reconfigure the Swiss Weather entry to pick a new weather station or remove it."
+      "description": "The saved weather station code `{station_code}` can no longer be found in the latest MeteoSwiss station metadata. Reconfigure the entry to pick a new weather station, or remove it."
     },
     "missing_pollen_station": {
       "title": "The stored pollen station for {entry_title} is no longer available",
-      "description": "The saved pollen station code `{station_code}` can no longer be found in the latest MeteoSwiss pollen metadata. Reconfigure the Swiss Weather entry to pick a new pollen station or disable pollen for this entry."
+      "description": "The saved pollen station code `{station_code}` can no longer be found in the latest MeteoSwiss pollen metadata. Reconfigure the entry to pick a new pollen station, or turn pollen off for this entry."
     }
   },
   "exceptions": {

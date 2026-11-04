@@ -1,0 +1,228 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Il dispositivo è già configurato",
+      "reconfigure_successful": "La riconfigurazione è stata completata"
+    },
+    "error": {
+      "cannot_connect": "Connessione non riuscita",
+      "unknown": "Errore imprevisto",
+      "forecast_query_required": "Inserisci un termine di ricerca per la località di previsione.",
+      "forecast_query_too_short": "Inserisci almeno 2 lettere oppure un codice postale / ID del punto esatto.",
+      "forecast_query_metadata_unavailable": "Le località di previsione non sono momentaneamente disponibili. Riprova tra poco.",
+      "forecast_query_not_found": "Non è stata trovata nessuna località di previsione corrispondente."
+    },
+    "step": {
+      "user": {
+        "title": "Località di previsione",
+        "description": "Cerca una località di previsione per nome oppure inserisci un codice postale o un ID del punto MeteoSvizzera esatto. Sono supportati codici postali, località e punti di interesse come vette, passi e capanne. Confermerai la località scelta nel passo successivo.",
+        "data_description": {
+          "forecast_query": "Cerca per nome della località, codice postale, ID del punto di previsione MeteoSvizzera o punto di interesse come una vetta, un passo o una capanna."
+        },
+        "data": {
+          "forecast_query": "Cerca la località di previsione"
+        }
+      },
+      "reconfigure": {
+        "title": "Stazioni",
+        "data_description": {
+          "stationCode": "Scegli una stazione meteo vicina per le misurazioni in tempo reale oppure seleziona «Nessuna stazione meteo» per ricavare le condizioni attuali dalla previsione.",
+          "pollenStationCode": "Scegli una stazione dei pollini per le misurazioni locali oppure seleziona «Nessuna stazione dei pollini» se non vuoi entità per i pollini.",
+          "warningsEnabled": "Crea le entità delle allerte per la località scelta: numero di allerte, grado più alto e allerte ordinate per priorità."
+        },
+        "data": {
+          "stationCode": "Stazione meteo per le condizioni attuali",
+          "pollenStationCode": "Stazione di misurazione dei pollini",
+          "warningsEnabled": "Crea le entità delle allerte meteo"
+        },
+        "description": "Aggiorna le stazioni meteo e dei pollini per la località di previsione esistente."
+      },
+      "forecast_pick": {
+        "title": "Scegli la località di previsione",
+        "description": "Scegli la località di previsione da usare oppure seleziona «Cerca di nuovo».",
+        "data_description": {
+          "forecast_point": "Seleziona la località di previsione da usare oppure scegli «Cerca di nuovo» per affinare la ricerca."
+        },
+        "data": {
+          "forecast_point": "Località di previsione corrispondenti"
+        }
+      },
+      "details": {
+        "title": "Stazioni",
+        "data_description": {
+          "stationCode": "Scegli una stazione meteo vicina per le misurazioni in tempo reale oppure seleziona «Nessuna stazione meteo» per ricavare le condizioni attuali dalla previsione.",
+          "pollenStationCode": "Scegli una stazione dei pollini per le misurazioni locali oppure seleziona «Nessuna stazione dei pollini» se non vuoi entità per i pollini.",
+          "warningsEnabled": "Crea le entità delle allerte per la località scelta: numero di allerte, grado più alto e allerte ordinate per priorità."
+        },
+        "data": {
+          "stationCode": "Stazione meteo per le condizioni attuali",
+          "pollenStationCode": "Stazione di misurazione dei pollini",
+          "warningsEnabled": "Crea le entità delle allerte meteo"
+        },
+        "description": "Scegli le stazioni meteo e dei pollini."
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "has_warnings": {
+        "name": "Allerte meteo"
+      },
+      "has_active_warnings": {
+        "name": "Allerte meteo in vigore"
+      }
+    },
+    "sensor": {
+      "time": {
+        "name": "Ora della misurazione"
+      },
+      "temperature": {
+        "name": "Temperatura"
+      },
+      "precipitation": {
+        "name": "Precipitazioni"
+      },
+      "sunshine": {
+        "name": "Soleggiamento"
+      },
+      "global_radiation": {
+        "name": "Radiazione globale"
+      },
+      "humidity": {
+        "name": "Umidità relativa"
+      },
+      "dew_point": {
+        "name": "Punto di rugiada"
+      },
+      "wind_direction": {
+        "name": "Direzione del vento"
+      },
+      "wind_speed": {
+        "name": "Velocità del vento"
+      },
+      "gust_peak1s": {
+        "name": "Raffica massima 1 s"
+      },
+      "pressure": {
+        "name": "Pressione atmosferica"
+      },
+      "pressure_qff": {
+        "name": "Pressione ridotta al livello del mare (QFF)"
+      },
+      "pressure_qnh": {
+        "name": "Pressione ridotta al livello del mare (QNH)"
+      },
+      "warning_count": {
+        "name": "Numero di allerte meteo"
+      },
+      "highest_warning_level": {
+        "name": "Grado di pericolo più alto"
+      },
+      "primary_warning": {
+        "name": "Allerta meteo principale"
+      },
+      "secondary_warning": {
+        "name": "Allerta meteo secondaria"
+      },
+      "tertiary_warning": {
+        "name": "Allerta meteo terziaria"
+      },
+      "pollen_time": {
+        "name": "Ora della misurazione dei pollini"
+      },
+      "birch": {
+        "name": "Polline di betulla"
+      },
+      "birch_level": {
+        "name": "Livello di polline di betulla"
+      },
+      "grasses": {
+        "name": "Polline di graminacee"
+      },
+      "grasses_level": {
+        "name": "Livello di polline di graminacee"
+      },
+      "alder": {
+        "name": "Polline di ontano"
+      },
+      "alder_level": {
+        "name": "Livello di polline di ontano"
+      },
+      "hazel": {
+        "name": "Polline di nocciolo"
+      },
+      "hazel_level": {
+        "name": "Livello di polline di nocciolo"
+      },
+      "beech": {
+        "name": "Polline di faggio"
+      },
+      "beech_level": {
+        "name": "Livello di polline di faggio"
+      },
+      "ash": {
+        "name": "Polline di frassino"
+      },
+      "ash_level": {
+        "name": "Livello di polline di frassino"
+      },
+      "oak": {
+        "name": "Polline di quercia"
+      },
+      "oak_level": {
+        "name": "Livello di polline di quercia"
+      }
+    }
+  },
+  "issues": {
+    "missing_forecast_point": {
+      "title": "La località di previsione salvata per {entry_title} non è più disponibile",
+      "description": "L'ID della località di previsione salvato `{post_code}` non è più presente negli ultimi metadati di previsione di MeteoSvizzera. Rimuovi la voce e aggiungila di nuovo per scegliere una nuova località di previsione."
+    },
+    "missing_weather_station": {
+      "title": "La stazione meteo salvata per {entry_title} non è più disponibile",
+      "description": "Il codice della stazione meteo salvato `{station_code}` non è più presente negli ultimi metadati delle stazioni di MeteoSvizzera. Riconfigura la voce per scegliere un'altra stazione meteo oppure rimuovila."
+    },
+    "missing_pollen_station": {
+      "title": "La stazione dei pollini salvata per {entry_title} non è più disponibile",
+      "description": "Il codice della stazione dei pollini salvato `{station_code}` non è più presente negli ultimi metadati dei pollini di MeteoSvizzera. Riconfigura la voce per scegliere un'altra stazione dei pollini oppure disattiva i pollini per questa voce."
+    }
+  },
+  "exceptions": {
+    "forecast_missing": {
+      "message": "MeteoSvizzera non ha fornito alcuna previsione per il punto {forecast_point}."
+    },
+    "forecast_unreachable": {
+      "message": "Il servizio di previsione di MeteoSvizzera non è raggiungibile: {error}"
+    },
+    "forecast_invalid": {
+      "message": "MeteoSvizzera ha fornito una previsione illeggibile: {error}"
+    },
+    "pollen_unreachable": {
+      "message": "Il servizio dei pollini di MeteoSvizzera non è raggiungibile: {error}"
+    },
+    "pollen_invalid": {
+      "message": "MeteoSvizzera ha fornito dati sui pollini illeggibili: {error}"
+    },
+    "update_failed": {
+      "message": "L'aggiornamento dei dati di MeteoSvizzera non è riuscito: {error}"
+    }
+  },
+  "selector": {
+    "forecast_point": {
+      "options": {
+        "search_again": "Cerca di nuovo"
+      }
+    },
+    "weather_station": {
+      "options": {
+        "no_weather_station": "Nessuna stazione meteo"
+      }
+    },
+    "pollen_station": {
+      "options": {
+        "no_pollen_station": "Nessuna stazione dei pollini"
+      }
+    }
+  }
+}
