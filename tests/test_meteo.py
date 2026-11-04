@@ -13,7 +13,7 @@ if str(WORKSPACE_ROOT) not in sys.path:
 
 import aiohttp
 
-from custom_components.swissweather.meteo import (
+from custom_components.meteoswiss_forecast_warnings.meteo import (
     MISSING_VALUE_SENTINEL,
     MeteoClient,
     MeteoSwissConnectionError,
@@ -63,7 +63,7 @@ class TestMeteoClient(unittest.IsolatedAsyncioTestCase):
         self.mock_session = MagicMock(spec=aiohttp.ClientSession)
         self.client = MeteoClient(session=self.mock_session, language="en")
         # Retries are covered in test_request.py; skip their back-off here.
-        retry_delays = patch("custom_components.swissweather.request._RETRY_DELAYS", (0, 0))
+        retry_delays = patch("custom_components.meteoswiss_forecast_warnings.request._RETRY_DELAYS", (0, 0))
         retry_delays.start()
         self.addCleanup(retry_delays.stop)
 

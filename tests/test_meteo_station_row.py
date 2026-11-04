@@ -4,7 +4,7 @@ import pytest
 
 pytest.importorskip("homeassistant")
 
-from custom_components.swissweather.meteo import MeteoClient
+from custom_components.meteoswiss_forecast_warnings.meteo import MeteoClient
 
 STATION_ROW = {
     "Station/Location": "TAE",

@@ -1,4 +1,4 @@
-"""Naming helpers for Swiss Weather entities and config entries."""
+"""Naming helpers for entities and config entries."""
 
 from __future__ import annotations
 
@@ -54,4 +54,5 @@ def build_entry_unique_id(post_code: str | None) -> str | None:
     normalized = str(post_code).strip()
     if not normalized:
         return None
+    # Kept from the swissweather domain so taken-over entries keep their ID.
     return f"swissweather_{normalized}"

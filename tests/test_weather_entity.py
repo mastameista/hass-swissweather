@@ -10,10 +10,10 @@ import pytest
 
 pytest.importorskip("homeassistant")
 
-from custom_components.swissweather.const import CONF_POST_CODE
-from custom_components.swissweather.coordinator import WeatherData, build_warning_snapshot
-from custom_components.swissweather.meteo import CurrentState, WeatherForecast
-from custom_components.swissweather.weather import SwissWeather
+from custom_components.meteoswiss_forecast_warnings.const import CONF_POST_CODE
+from custom_components.meteoswiss_forecast_warnings.coordinator import WeatherData, build_warning_snapshot
+from custom_components.meteoswiss_forecast_warnings.meteo import CurrentState, WeatherForecast
+from custom_components.meteoswiss_forecast_warnings.weather import SwissWeather
 
 ENTRY = SimpleNamespace(entry_id="entry-1", data={CONF_POST_CODE: "800100"})
 

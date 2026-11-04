@@ -1,6 +1,6 @@
 """Tests for forecast-point search helpers."""
 
-from custom_components.swissweather.forecast_points import (
+from custom_components.meteoswiss_forecast_warnings.forecast_points import (
     ForecastPoint,
     search_forecast_points,
 )

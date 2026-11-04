@@ -10,7 +10,7 @@ import pytest
 
 pytest.importorskip("homeassistant")
 
-from custom_components.swissweather.meteo import MeteoClient
+from custom_components.meteoswiss_forecast_warnings.meteo import MeteoClient
 
 FIXTURE = Path(__file__).parent / "fixtures" / "forecast_800100.json"
 

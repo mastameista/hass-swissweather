@@ -1,4 +1,4 @@
-"""Diagnostics support for Swiss Weather."""
+"""Diagnostics support for MeteoSwiss Forecast & Warnings."""
 
 from __future__ import annotations
 

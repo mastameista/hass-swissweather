@@ -88,6 +88,7 @@ class SwissWeather(SwissWeatherEntity, WeatherEntity):
 
     @property
     def unique_id(self) -> str | None:
+        # Format kept from the swissweather domain so taken-over entities match.
         return f"swiss_weather.{self._postCode}"
 
     @property

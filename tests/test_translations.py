@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import re
 
-COMPONENT = Path(__file__).parent.parent / "custom_components" / "swissweather"
+COMPONENT = Path(__file__).parent.parent / "custom_components" / "meteoswiss_forecast_warnings"
 
 
 def _load(name: str) -> dict:

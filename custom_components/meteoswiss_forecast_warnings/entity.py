@@ -1,4 +1,4 @@
-"""Base entities and device info shared by the SwissWeather platforms."""
+"""Base entities and device info shared by the platforms."""
 
 from __future__ import annotations
 

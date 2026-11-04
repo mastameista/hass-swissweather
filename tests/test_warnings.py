@@ -5,8 +5,8 @@ import pytest
 
 pytest.importorskip("homeassistant")
 
-from custom_components.swissweather.coordinator import build_warning_snapshot
-from custom_components.swissweather.meteo import (
+from custom_components.meteoswiss_forecast_warnings.coordinator import build_warning_snapshot
+from custom_components.meteoswiss_forecast_warnings.meteo import (
     Warning,
     WarningLevel,
     WarningLink,
@@ -15,7 +15,7 @@ from custom_components.swissweather.meteo import (
     parse_warning_level,
     parse_warning_type,
 )
-from custom_components.swissweather.sensor import (
+from custom_components.meteoswiss_forecast_warnings.sensor import (
     get_color_for_warning_level,
     get_icon_for_warning,
 )

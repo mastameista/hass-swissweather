@@ -13,7 +13,7 @@ if str(WORKSPACE_ROOT) not in sys.path:
 
 import aiohttp
 
-from custom_components.swissweather.pollen import (
+from custom_components.meteoswiss_forecast_warnings.pollen import (
     PollenClient,
     PollenConnectionError,
     PollenDataError,
@@ -59,7 +59,7 @@ class TestPollenClient(unittest.IsolatedAsyncioTestCase):
         self.mock_session = MagicMock(spec=aiohttp.ClientSession)
         self.client = PollenClient(session=self.mock_session, language="en")
         # Retries are covered in test_request.py; skip their back-off here.
-        retry_delays = patch("custom_components.swissweather.request._RETRY_DELAYS", (0, 0))
+        retry_delays = patch("custom_components.meteoswiss_forecast_warnings.request._RETRY_DELAYS", (0, 0))
         retry_delays.start()
         self.addCleanup(retry_delays.stop)
 

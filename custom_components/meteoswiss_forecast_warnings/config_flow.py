@@ -1,4 +1,4 @@
-"""Config flow for Swiss Weather integration."""
+"""Config flow for the MeteoSwiss Forecast & Warnings integration."""
 from __future__ import annotations
 
 import logging
@@ -20,6 +20,7 @@ from homeassistant.util.location import distance
 from .const import (
     CONF_FORECAST_POINT_TYPE,
     CONF_FORECAST_NAME,
+    CONF_IMPORTED_FROM,
     CONF_POLLEN_STATION_CODE,
     CONF_POLLEN_STATION_NAME,
     CONF_POST_CODE,
@@ -28,6 +29,7 @@ from .const import (
     CONF_WARNINGS_ENABLED,
     CONF_WEATHER_WARNINGS_NUMBER,
     DOMAIN,
+    LEGACY_DOMAIN,
 )
 from .forecast_points import (
     ForecastPointMetadataLoadError,
@@ -61,8 +63,13 @@ NO_WEATHER_STATION_OPTION = "no_weather_station"
 MAX_FORECAST_POINT_RESULTS = 50
 
 
+def _legacy_unique_id(entry: config_entries.ConfigEntry) -> str | None:
+    """Return the unique ID a legacy entry has, or would have had."""
+    return entry.unique_id or build_entry_unique_id(entry.data.get(CONF_POST_CODE))
+
+
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Swiss Weather."""
+    """Handle a config flow for MeteoSwiss Forecast & Warnings."""
 
     VERSION = 2
 
@@ -81,9 +88,70 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Handle the initial forecast search step."""
         if user_input is None:
+            if legacy_entries := self._legacy_entries_to_take_over():
+                return self.async_show_menu(
+                    step_id="legacy",
+                    menu_options=["take_over_legacy", "search"],
+                    description_placeholders={
+                        "entries": ", ".join(entry.title for entry in legacy_entries)
+                    },
+                )
             return await self._show_forecast_search_form("user")
 
         return await self._handle_forecast_search("user", user_input)
+
+    async def async_step_search(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Set up a new forecast place although legacy entries exist."""
+        return await self._show_forecast_search_form("user")
+
+    async def async_step_take_over_legacy(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Start one import flow per legacy swissweather entry."""
+        legacy_entries = self._legacy_entries_to_take_over()
+        for legacy_entry in legacy_entries:
+            self.hass.async_create_task(
+                self.hass.config_entries.flow.async_init(
+                    DOMAIN,
+                    context={"source": config_entries.SOURCE_IMPORT},
+                    data={CONF_IMPORTED_FROM: legacy_entry.entry_id},
+                )
+            )
+        return self.async_abort(
+            reason="legacy_take_over_started",
+            description_placeholders={"count": str(len(legacy_entries))},
+        )
+
+    async def async_step_import(self, import_data: dict[str, Any]) -> ConfigFlowResult:
+        """Create an entry from a legacy swissweather entry.
+
+        The entry keeps the legacy data; async_setup_entry then moves the
+        devices and entities over and removes the legacy entry.
+        """
+        legacy_entry = self.hass.config_entries.async_get_entry(
+            import_data[CONF_IMPORTED_FROM]
+        )
+        if legacy_entry is None or legacy_entry.domain != LEGACY_DOMAIN:
+            return self.async_abort(reason="legacy_entry_missing")
+        unique_id = _legacy_unique_id(legacy_entry)
+        if unique_id is not None:
+            await self.async_set_unique_id(unique_id)
+            self._abort_if_unique_id_configured()
+        return self.async_create_entry(
+            title=legacy_entry.title,
+            data={**legacy_entry.data, CONF_IMPORTED_FROM: legacy_entry.entry_id},
+        )
+
+    def _legacy_entries_to_take_over(self) -> list[config_entries.ConfigEntry]:
+        """Return legacy entries whose forecast place is not set up here yet."""
+        taken = {entry.unique_id for entry in self._async_current_entries()}
+        return [
+            entry
+            for entry in self.hass.config_entries.async_entries(LEGACY_DOMAIN)
+            if _legacy_unique_id(entry) not in taken
+        ]
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None

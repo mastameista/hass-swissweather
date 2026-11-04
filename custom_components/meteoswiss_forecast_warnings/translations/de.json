@@ -2,7 +2,9 @@
   "config": {
     "abort": {
       "already_configured": "Gerät ist bereits konfiguriert",
-      "reconfigure_successful": "Die Neukonfiguration war erfolgreich"
+      "reconfigure_successful": "Die Neukonfiguration war erfolgreich",
+      "legacy_take_over_started": "{count} Swiss-Weather-Einträge werden übernommen. Sie erscheinen gleich hier, mit ihren Entitäten und ihrem Verlauf.",
+      "legacy_entry_missing": "Der zu übernehmende Swiss-Weather-Eintrag existiert nicht mehr."
     },
     "error": {
       "cannot_connect": "Verbindung fehlgeschlagen",
@@ -60,6 +62,14 @@
           "warningsEnabled": "Wetterwarnungs-Entitäten erstellen"
         },
         "description": "Wähle die Wetter- und Pollenstationen."
+      },
+      "legacy": {
+        "title": "Bestehende Swiss-Weather-Einträge gefunden",
+        "description": "Swiss Weather ist eingerichtet für: {entries}. Übernimm diese Einträge, damit Entity-IDs, Verlauf, Dashboards und Automationen erhalten bleiben, oder richte einen neuen Prognoseort ein.",
+        "menu_options": {
+          "take_over_legacy": "Bestehende Einträge übernehmen",
+          "search": "Neuen Prognoseort einrichten"
+        }
       }
     }
   },
@@ -186,6 +196,10 @@
     "missing_pollen_station": {
       "title": "Die gespeicherte Pollenstation für {entry_title} ist nicht mehr verfügbar",
       "description": "Der gespeicherte Pollenstationscode `{station_code}` ist in den aktuellen MeteoSwiss-Pollenmetadaten nicht mehr enthalten. Konfiguriere den Eintrag neu, um eine andere Pollenstation zu wählen, oder schalte Pollen für diesen Eintrag ab."
+    },
+    "legacy_integration_installed": {
+      "title": "Die alte Swiss-Weather-Integration ist noch installiert",
+      "description": "Alle Swiss-Weather-Einträge laufen jetzt in MeteoSwiss Forecast & Warnings. Entferne Swiss Weather in HACS und starte Home Assistant neu. Bleibt sie installiert, könnte ein HACS-Update ihre Dateien durch nicht mehr passende ersetzen."
     }
   },
   "exceptions": {

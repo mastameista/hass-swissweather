@@ -8,7 +8,7 @@ from aiohttp import ClientConnectorError, ClientResponseError, RequestInfo
 import pytest
 from yarl import URL
 
-from custom_components.swissweather.request import async_get_with_retry
+from custom_components.meteoswiss_forecast_warnings.request import async_get_with_retry
 
 
 class _Response:

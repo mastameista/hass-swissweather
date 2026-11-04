@@ -9,7 +9,7 @@ pytest.importorskip("homeassistant")
 
 from datetime import UTC, datetime
 
-from custom_components.swissweather.meteo import (
+from custom_components.meteoswiss_forecast_warnings.meteo import (
     FORECAST_URL,
     MeteoClient,
     MeteoSwissDataError,

@@ -40,18 +40,18 @@ if importlib.util.find_spec("pytest_homeassistant_custom_component") is not None
             self._register({url: response})
 
         def _register(self, overrides: dict[str, dict[str, Any]]) -> None:
-            from custom_components.swissweather.forecast_points import (
+            from custom_components.meteoswiss_forecast_warnings.forecast_points import (
                 FORECAST_POINT_LIST_URL,
             )
-            from custom_components.swissweather.meteo import (
+            from custom_components.meteoswiss_forecast_warnings.meteo import (
                 CURRENT_CONDITION_URL,
                 FORECAST_URL,
             )
-            from custom_components.swissweather.pollen import (
+            from custom_components.meteoswiss_forecast_warnings.pollen import (
                 POLLEN_DATA_URL,
                 POLLEN_STATIONS_URL,
             )
-            from custom_components.swissweather.station_lookup import STATION_LIST_URL
+            from custom_components.meteoswiss_forecast_warnings.station_lookup import STATION_LIST_URL
 
             forecast = json.loads((FIXTURES / "forecast_800100.json").read_text("utf-8"))
             pollen = json.loads((FIXTURES / "pollen_data.json").read_text("utf-8"))
@@ -81,13 +81,13 @@ if importlib.util.find_spec("pytest_homeassistant_custom_component") is not None
 
     @pytest.fixture(autouse=True)
     def auto_enable_custom_integrations(enable_custom_integrations):
-        """Let Home Assistant load custom_components/swissweather in `hass` tests."""
+        """Let Home Assistant load custom_components/meteoswiss_forecast_warnings in `hass` tests."""
         return
 
     @pytest.fixture
     def meteoswiss_api(aioclient_mock, monkeypatch) -> MeteoSwissApi:
         """Serve all MeteoSwiss endpoints; see MeteoSwissApi."""
-        from custom_components.swissweather import request
+        from custom_components.meteoswiss_forecast_warnings import request
 
         # Failures are retried; skip the back-off in tests.
         monkeypatch.setattr(request, "_RETRY_DELAYS", (0, 0))

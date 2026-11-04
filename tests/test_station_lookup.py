@@ -9,7 +9,7 @@ import pytest
 
 pytest.importorskip("homeassistant")
 
-from custom_components.swissweather import station_lookup
+from custom_components.meteoswiss_forecast_warnings import station_lookup
 
 HEADER = "Station;Abbr.;Station height m a. sea level;Latitude;Longitude;Canton;Measurements"
 GOOD = "Pfäffikon ZH;PFA;537;47.38;8.79;ZH;Temperature, Precipitation"

@@ -10,8 +10,8 @@ import pytest
 
 pytest.importorskip("homeassistant")
 
-from custom_components.swissweather.config_flow import ConfigFlow
-from custom_components.swissweather.station_lookup import WeatherStation
+from custom_components.meteoswiss_forecast_warnings.config_flow import ConfigFlow
+from custom_components.meteoswiss_forecast_warnings.station_lookup import WeatherStation
 
 NEAR = WeatherStation("Pfäffikon, ZH", "PFA", 537, 47.38, 8.79, "ZH")
 FAR = WeatherStation("Lugano", "LUG", 273, 46.0, 8.96, "TI")

@@ -8,7 +8,7 @@ import pytest
 
 pytest.importorskip("homeassistant")
 
-from custom_components.swissweather.__init__ import (
+from custom_components.meteoswiss_forecast_warnings.__init__ import (
     SwissWeatherMetadata,
     _async_cleanup_disabled_warning_entities,
     _async_ensure_entry_names,
@@ -20,7 +20,7 @@ from custom_components.swissweather.__init__ import (
     async_setup_entry,
     async_unload_entry,
 )
-from custom_components.swissweather.const import (
+from custom_components.meteoswiss_forecast_warnings.const import (
     CONF_POLLEN_STATION_CODE,
     CONF_POLLEN_STATION_NAME,
     CONF_POST_CODE,
@@ -30,9 +30,9 @@ from custom_components.swissweather.const import (
     CONF_WEATHER_WARNINGS_NUMBER,
     DOMAIN,
 )
-from custom_components.swissweather.forecast_points import ForecastPoint
-from custom_components.swissweather.naming import build_entry_unique_id
-from custom_components.swissweather.station_lookup import WeatherStation
+from custom_components.meteoswiss_forecast_warnings.forecast_points import ForecastPoint
+from custom_components.meteoswiss_forecast_warnings.naming import build_entry_unique_id
+from custom_components.meteoswiss_forecast_warnings.station_lookup import WeatherStation
 
 
 class FakeConfigEntries:
@@ -123,7 +123,7 @@ def test_cleanup_disabled_warning_entities_only_removes_current_entry(monkeypatc
         ]
     )
 
-    from custom_components.swissweather import __init__ as init_module
+    from custom_components.meteoswiss_forecast_warnings import __init__ as init_module
 
     monkeypatch.setattr(init_module.er, "async_get", lambda hass: registry)
 
@@ -266,7 +266,7 @@ def test_ensure_entry_names_refreshes_existing_station_and_pollen_names():
 def test_async_setup_entry_rechecks_legacy_devices_after_platform_setup(
     monkeypatch, entry_data, expected_refreshes, expect_pollen_coordinator
 ):
-    from custom_components.swissweather import __init__ as init_module
+    from custom_components.meteoswiss_forecast_warnings import __init__ as init_module
 
     cleanup_calls: list[str] = []
     call_order: list[str] = []
@@ -326,6 +326,7 @@ def test_async_setup_entry_rechecks_legacy_devices_after_platform_setup(
     monkeypatch.setattr(init_module, "_async_cleanup_legacy_devices", fake_cleanup_legacy_devices)
     monkeypatch.setattr(init_module, "_async_sync_entry_device_names", fake_sync_entry_device_names)
     monkeypatch.setattr(init_module, "_async_cleanup_optional_devices", fake_noop)
+    monkeypatch.setattr(init_module, "_async_sync_legacy_integration_issue", AsyncMock())
     monkeypatch.setattr(init_module, "_async_cleanup_legacy_warning_entities", fake_noop)
     monkeypatch.setattr(init_module, "_async_cleanup_disabled_warning_entities", fake_noop)
     monkeypatch.setattr(init_module, "SwissWeatherDataCoordinator", FakeWeatherCoordinator)
@@ -352,7 +353,7 @@ def test_async_setup_entry_rechecks_legacy_devices_after_platform_setup(
 
 
 def test_sync_repairs_issues_creates_issue_for_missing_forecast_point(monkeypatch):
-    from custom_components.swissweather import __init__ as init_module
+    from custom_components.meteoswiss_forecast_warnings import __init__ as init_module
 
     created: list[tuple[str, str, dict]] = []
     deleted: list[tuple[str, str]] = []
@@ -386,12 +387,12 @@ def test_sync_repairs_issues_creates_issue_for_missing_forecast_point(monkeypatc
     assert created[0][1] == "missing_forecast_point_entry-1"
     assert created[0][2]["translation_key"] == "missing_forecast_point"
     assert created[0][2]["translation_placeholders"]["post_code"] == "9999"
-    assert ("swissweather", "missing_weather_station_entry-1") in deleted
-    assert ("swissweather", "missing_pollen_station_entry-1") in deleted
+    assert (DOMAIN, "missing_weather_station_entry-1") in deleted
+    assert (DOMAIN, "missing_pollen_station_entry-1") in deleted
 
 
 def test_sync_repairs_issues_clears_weather_issue_when_station_exists(monkeypatch):
-    from custom_components.swissweather import __init__ as init_module
+    from custom_components.meteoswiss_forecast_warnings import __init__ as init_module
 
     created: list[tuple[str, str, dict]] = []
     deleted: list[tuple[str, str]] = []
@@ -424,12 +425,12 @@ def test_sync_repairs_issues_clears_weather_issue_when_station_exists(monkeypatc
     _async_sync_repairs_issues(SimpleNamespace(), entry, metadata)
 
     assert created == []
-    assert ("swissweather", "missing_forecast_point_entry-2") in deleted
-    assert ("swissweather", "missing_weather_station_entry-2") in deleted
+    assert (DOMAIN, "missing_forecast_point_entry-2") in deleted
+    assert (DOMAIN, "missing_weather_station_entry-2") in deleted
 
 
 def test_sync_repairs_issues_accepts_legacy_postal_code_forecast_match(monkeypatch):
-    from custom_components.swissweather import __init__ as init_module
+    from custom_components.meteoswiss_forecast_warnings import __init__ as init_module
 
     created: list[tuple[str, str, dict]] = []
     deleted: list[tuple[str, str]] = []
@@ -460,11 +461,11 @@ def test_sync_repairs_issues_accepts_legacy_postal_code_forecast_match(monkeypat
     _async_sync_repairs_issues(SimpleNamespace(), entry, metadata)
 
     assert created == []
-    assert ("swissweather", "missing_forecast_point_entry-legacy-postal") in deleted
+    assert (DOMAIN, "missing_forecast_point_entry-legacy-postal") in deleted
 
 
 def test_sync_repairs_issues_keeps_existing_issues_when_metadata_unknown(monkeypatch):
-    from custom_components.swissweather import __init__ as init_module
+    from custom_components.meteoswiss_forecast_warnings import __init__ as init_module
 
     created: list[tuple[str, str, dict]] = []
     deleted: list[tuple[str, str]] = []
@@ -500,7 +501,7 @@ def test_sync_repairs_issues_keeps_existing_issues_when_metadata_unknown(monkeyp
 
 
 def test_sync_repairs_issues_ignores_unconfigured_pollen_station(monkeypatch):
-    from custom_components.swissweather import __init__ as init_module
+    from custom_components.meteoswiss_forecast_warnings import __init__ as init_module
 
     created: list[tuple[str, str, dict]] = []
     deleted: list[tuple[str, str]] = []
@@ -534,7 +535,7 @@ def test_sync_repairs_issues_ignores_unconfigured_pollen_station(monkeypatch):
     _async_sync_repairs_issues(SimpleNamespace(), entry, metadata)
 
     assert created == []
-    assert ("swissweather", "missing_pollen_station_entry-4") in deleted
+    assert (DOMAIN, "missing_pollen_station_entry-4") in deleted
 
 
 def test_async_unload_entry_delegates_to_platform_unload():
@@ -552,7 +553,7 @@ def test_async_unload_entry_delegates_to_platform_unload():
 
 
 def test_async_remove_config_entry_device_rejects_foreign_devices(monkeypatch):
-    from custom_components.swissweather import __init__ as init_module
+    from custom_components.meteoswiss_forecast_warnings import __init__ as init_module
 
     monkeypatch.setattr(init_module.er, "async_get", lambda hass: object())
     monkeypatch.setattr(
@@ -575,7 +576,7 @@ def test_async_remove_config_entry_device_rejects_foreign_devices(monkeypatch):
 def test_async_remove_config_entry_device_allows_orphaned_swissweather_devices(
     monkeypatch,
 ):
-    from custom_components.swissweather import __init__ as init_module
+    from custom_components.meteoswiss_forecast_warnings import __init__ as init_module
 
     monkeypatch.setattr(init_module.er, "async_get", lambda hass: object())
     monkeypatch.setattr(

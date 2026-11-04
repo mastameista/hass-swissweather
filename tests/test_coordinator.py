@@ -9,10 +9,10 @@ pytest.importorskip("homeassistant")
 
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
-from custom_components.swissweather.const import CONF_POST_CODE, CONF_STATION_CODE
-from custom_components.swissweather.coordinator import SwissWeatherDataCoordinator
-from custom_components.swissweather.meteo import MeteoSwissConnectionError, MeteoSwissDataError
-from custom_components.swissweather.pollen import PollenDataError
+from custom_components.meteoswiss_forecast_warnings.const import CONF_POST_CODE, CONF_STATION_CODE
+from custom_components.meteoswiss_forecast_warnings.coordinator import SwissWeatherDataCoordinator
+from custom_components.meteoswiss_forecast_warnings.meteo import MeteoSwissConnectionError, MeteoSwissDataError
+from custom_components.meteoswiss_forecast_warnings.pollen import PollenDataError
 
 
 class FakeHass:
@@ -29,7 +29,7 @@ class FakeConfigEntry:
 
 
 def test_weather_coordinator_fails_when_forecast_missing(monkeypatch):
-    from custom_components.swissweather import coordinator as coordinator_module
+    from custom_components.meteoswiss_forecast_warnings import coordinator as coordinator_module
 
     class _FakeMeteoClient:
         def __init__(self, session, language="en"):
@@ -60,7 +60,7 @@ def test_weather_coordinator_fails_when_forecast_missing(monkeypatch):
 
 
 def test_weather_coordinator_uses_forecast_current_as_fallback(monkeypatch):
-    from custom_components.swissweather import coordinator as coordinator_module
+    from custom_components.meteoswiss_forecast_warnings import coordinator as coordinator_module
 
     forecast = SimpleNamespace(
         current=SimpleNamespace(currentTemperature=(12.3, "C")),
@@ -99,7 +99,7 @@ def test_weather_coordinator_uses_forecast_current_as_fallback(monkeypatch):
 
 
 def test_weather_coordinator_logs_station_outage_once_and_recovery(monkeypatch, caplog):
-    from custom_components.swissweather import coordinator as coordinator_module
+    from custom_components.meteoswiss_forecast_warnings import coordinator as coordinator_module
 
     forecast = SimpleNamespace(
         current=SimpleNamespace(currentTemperature=(12.3, "C")),
@@ -159,7 +159,7 @@ def test_weather_coordinator_logs_station_outage_once_and_recovery(monkeypatch, 
 
 
 def test_weather_coordinator_classifies_forecast_connection_errors(monkeypatch):
-    from custom_components.swissweather import coordinator as coordinator_module
+    from custom_components.meteoswiss_forecast_warnings import coordinator as coordinator_module
 
     class _FakeMeteoClient:
         def __init__(self, session, language="en"):
@@ -188,7 +188,7 @@ def test_weather_coordinator_classifies_forecast_connection_errors(monkeypatch):
 
 
 def test_pollen_coordinator_classifies_invalid_payload(monkeypatch):
-    from custom_components.swissweather import coordinator as coordinator_module
+    from custom_components.meteoswiss_forecast_warnings import coordinator as coordinator_module
 
     class _FakePollenClient:
         def __init__(self, session, language="en"):
@@ -214,7 +214,7 @@ def test_pollen_coordinator_classifies_invalid_payload(monkeypatch):
 
 
 def test_weather_coordinator_classifies_invalid_warning_payload(monkeypatch):
-    from custom_components.swissweather import coordinator as coordinator_module
+    from custom_components.meteoswiss_forecast_warnings import coordinator as coordinator_module
 
     class _FakeMeteoClient:
         def __init__(self, session, language="en"):
@@ -243,7 +243,7 @@ def test_weather_coordinator_classifies_invalid_warning_payload(monkeypatch):
 
 
 def test_weather_coordinator_normalizes_hass_language(monkeypatch):
-    from custom_components.swissweather import coordinator as coordinator_module
+    from custom_components.meteoswiss_forecast_warnings import coordinator as coordinator_module
 
     monkeypatch.setattr(
         coordinator_module, "async_get_clientsession", lambda hass: object()

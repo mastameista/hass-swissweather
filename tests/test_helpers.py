@@ -8,13 +8,13 @@ WORKSPACE_ROOT = Path(__file__).resolve().parent.parent
 if str(WORKSPACE_ROOT) not in sys.path:
     sys.path.insert(0, str(WORKSPACE_ROOT))
 
-from custom_components.swissweather.meteo import (
+from custom_components.meteoswiss_forecast_warnings.meteo import (
     StationInfo,
     to_float as meteo_to_float,
     to_int,
     to_meteoswiss_language,
 )
-from custom_components.swissweather.pollen import (
+from custom_components.meteoswiss_forecast_warnings.pollen import (
     PollenLevel,
     get_pollen_level,
     to_float as pollen_to_float,

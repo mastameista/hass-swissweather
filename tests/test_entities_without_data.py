@@ -10,11 +10,11 @@ import pytest
 
 pytest.importorskip("homeassistant")
 
-from custom_components.swissweather.binary_sensor import (
+from custom_components.meteoswiss_forecast_warnings.binary_sensor import (
     SwissWeatherHasActiveWarningsBinarySensor,
     SwissWeatherHasWarningsBinarySensor,
 )
-from custom_components.swissweather.meteo import (
+from custom_components.meteoswiss_forecast_warnings.meteo import (
     MeteoClient,
     MeteoSwissDataError,
     WarningLevel,
@@ -22,7 +22,7 @@ from custom_components.swissweather.meteo import (
     parse_warning_level,
     parse_warning_type,
 )
-from custom_components.swissweather.sensor import (
+from custom_components.meteoswiss_forecast_warnings.sensor import (
     POLLEN_SENSORS,
     SENSORS,
     SwissPollenLevelSensor,
@@ -34,7 +34,7 @@ from custom_components.swissweather.sensor import (
     first_or_none,
 )
 
-DEVICE = {"identifiers": {("swissweather", "entry-1-forecast")}, "name": "Zürich"}
+DEVICE = {"identifiers": {("meteoswiss_forecast_warnings", "entry-1-forecast")}, "name": "Zürich"}
 NO_DATA = SimpleNamespace(data=None)
 
 
@@ -86,7 +86,7 @@ def test_forecast_query_value(value, point_type, query):
 
 
 def test_undecodable_station_csv_is_a_data_error(monkeypatch):
-    from custom_components.swissweather import meteo
+    from custom_components.meteoswiss_forecast_warnings import meteo
 
     response = MagicMock()
     response.text = AsyncMock(side_effect=UnicodeDecodeError("utf-8", b"\xff", 0, 1, "bad"))

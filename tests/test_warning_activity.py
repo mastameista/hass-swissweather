@@ -10,28 +10,28 @@ import pytest
 
 pytest.importorskip("homeassistant")
 
-from custom_components.swissweather import __init__ as init_module
-from custom_components.swissweather.__init__ import (
+from custom_components.meteoswiss_forecast_warnings import __init__ as init_module
+from custom_components.meteoswiss_forecast_warnings.__init__ import (
     _async_cleanup_legacy_warning_entities,
 )
-from custom_components.swissweather.binary_sensor import (
+from custom_components.meteoswiss_forecast_warnings.binary_sensor import (
     SwissWeatherHasActiveWarningsBinarySensor,
     SwissWeatherHasWarningsBinarySensor,
 )
-from custom_components.swissweather.binary_sensor import (
+from custom_components.meteoswiss_forecast_warnings.binary_sensor import (
     async_setup_entry as async_setup_binary_sensor_entry,
 )
-from custom_components.swissweather.const import (
+from custom_components.meteoswiss_forecast_warnings.const import (
     CONF_FORECAST_NAME,
     CONF_POST_CODE,
     CONF_WARNINGS_ENABLED,
     DOMAIN,
 )
-from custom_components.swissweather.coordinator import (
+from custom_components.meteoswiss_forecast_warnings.coordinator import (
     WeatherData,
     build_warning_snapshot,
 )
-from custom_components.swissweather.sensor import (
+from custom_components.meteoswiss_forecast_warnings.sensor import (
     SwissWeatherHighestWarningLevelSensor,
     SwissWeatherWarningCountSensor,
     SwissWeatherWarningSlotSensor,
@@ -158,7 +158,7 @@ def test_warning_count_reports_active_and_upcoming_split():
 
 
 def test_slot_sensors_flag_whether_their_warning_is_in_force():
-    from custom_components.swissweather.meteo import WarningLevel
+    from custom_components.meteoswiss_forecast_warnings.meteo import WarningLevel
 
     # The upcoming warning outranks the active one by level, so it takes slot 1.
     coordinator = _coordinator(

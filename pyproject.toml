@@ -7,5 +7,5 @@ testpaths = ["tests"]
 
 [tool.mypy]
 python_version = "3.14"
-files = ["custom_components/swissweather"]
+files = ["custom_components/meteoswiss_forecast_warnings"]
 strict = true

@@ -7,7 +7,7 @@ import pytest
 
 pytest.importorskip("homeassistant")
 
-from custom_components.swissweather.const import (
+from custom_components.meteoswiss_forecast_warnings.const import (
     CONF_FORECAST_NAME,
     CONF_POLLEN_STATION_CODE,
     CONF_POST_CODE,
@@ -15,10 +15,10 @@ from custom_components.swissweather.const import (
     CONF_STATION_NAME,
     CONF_WARNINGS_ENABLED,
 )
-from custom_components.swissweather.coordinator import WarningSnapshot, WeatherData
-from custom_components.swissweather.diagnostics import async_get_config_entry_diagnostics
-from custom_components.swissweather.sensor import async_setup_entry as async_setup_sensor_entry
-from custom_components.swissweather.weather import SwissWeather
+from custom_components.meteoswiss_forecast_warnings.coordinator import WarningSnapshot, WeatherData
+from custom_components.meteoswiss_forecast_warnings.diagnostics import async_get_config_entry_diagnostics
+from custom_components.meteoswiss_forecast_warnings.sensor import async_setup_entry as async_setup_sensor_entry
+from custom_components.meteoswiss_forecast_warnings.weather import SwissWeather
 
 
 def test_diagnostics_redacts_entry_location_data():
@@ -135,7 +135,7 @@ def test_sensor_setup_skips_current_weather_sensors_without_station():
 def test_only_the_update_timestamps_are_diagnostic_entities():
     from homeassistant.const import EntityCategory
 
-    from custom_components.swissweather.sensor import POLLEN_SENSORS, SENSORS
+    from custom_components.meteoswiss_forecast_warnings.sensor import POLLEN_SENSORS, SENSORS
 
     diagnostic = [
         entry.key
@@ -156,7 +156,7 @@ def test_long_attributes_are_kept_out_of_the_recorder(entity_class):
     """
     from homeassistant.const import MATCH_ALL
 
-    from custom_components.swissweather import sensor
+    from custom_components.meteoswiss_forecast_warnings import sensor
 
     cls = getattr(sensor, entity_class)
     assert MATCH_ALL in cls._Entity__combined_unrecorded_attributes

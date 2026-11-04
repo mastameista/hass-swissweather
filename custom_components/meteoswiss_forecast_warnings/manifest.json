@@ -1,0 +1,15 @@
+{
+  "domain": "meteoswiss_forecast_warnings",
+  "name": "MeteoSwiss Forecast & Warnings",
+  "codeowners": [
+    "@mastameista"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/mastameista/ha-meteoswiss-forecast-warnings",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/mastameista/ha-meteoswiss-forecast-warnings/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}

@@ -4,7 +4,7 @@ import pytest
 
 pytest.importorskip("homeassistant")
 
-from custom_components.swissweather.meteo import MISSING_VALUE_SENTINEL, MeteoClient
+from custom_components.meteoswiss_forecast_warnings.meteo import MISSING_VALUE_SENTINEL, MeteoClient
 
 
 def test_current_state_reads_icon_v2():

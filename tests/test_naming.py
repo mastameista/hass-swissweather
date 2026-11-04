@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from custom_components.swissweather.naming import (
+from custom_components.meteoswiss_forecast_warnings.naming import (
     build_entry_title,
     build_entry_unique_id,
     format_station_display_name,

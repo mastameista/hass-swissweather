@@ -11,14 +11,14 @@ pytest.importorskip("homeassistant")
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import AbortFlow
 
-from custom_components.swissweather import config_flow as config_flow_module
-from custom_components.swissweather.config_flow import (
+from custom_components.meteoswiss_forecast_warnings import config_flow as config_flow_module
+from custom_components.meteoswiss_forecast_warnings.config_flow import (
     ConfigFlow,
     NO_POLLEN_STATION_OPTION,
     NO_WEATHER_STATION_OPTION,
     SEARCH_AGAIN_OPTION,
 )
-from custom_components.swissweather.const import (
+from custom_components.meteoswiss_forecast_warnings.const import (
     CONF_FORECAST_NAME,
     CONF_POLLEN_STATION_CODE,
     CONF_POLLEN_STATION_NAME,
@@ -27,11 +27,11 @@ from custom_components.swissweather.const import (
     CONF_STATION_NAME,
     CONF_WARNINGS_ENABLED,
 )
-from custom_components.swissweather.forecast_points import (
+from custom_components.meteoswiss_forecast_warnings.forecast_points import (
     ForecastPoint,
     ForecastPointMetadataLoadError,
 )
-from custom_components.swissweather.station_lookup import WeatherStation
+from custom_components.meteoswiss_forecast_warnings.station_lookup import WeatherStation
 
 
 class FakeHass:
@@ -618,7 +618,7 @@ def test_reconfigure_step_allows_adding_live_weather_station(monkeypatch) -> Non
 
 
 def test_ensure_entry_names_keeps_setup_alive_when_metadata_unavailable(monkeypatch):
-    import custom_components.swissweather as init_module
+    import custom_components.meteoswiss_forecast_warnings as init_module
 
     entry = SimpleNamespace(
         data={CONF_POST_CODE: "6500"},
@@ -667,7 +667,7 @@ def test_ensure_entry_names_keeps_setup_alive_when_metadata_unavailable(monkeypa
 )
 def test_metadata_loaders_return_empty_on_failure(loader_name, expected):
     if loader_name == "async_load_forecast_point_list":
-        from custom_components.swissweather import forecast_points as module
+        from custom_components.meteoswiss_forecast_warnings import forecast_points as module
 
         class _BrokenSession:
             def get(self, *args, **kwargs):
@@ -677,7 +677,7 @@ def test_metadata_loaders_return_empty_on_failure(loader_name, expected):
         return
 
     if loader_name == "async_load_weather_station_list":
-        from custom_components.swissweather import station_lookup as module
+        from custom_components.meteoswiss_forecast_warnings import station_lookup as module
 
         class _BrokenSession:
             def get(self, *args, **kwargs):
@@ -686,7 +686,7 @@ def test_metadata_loaders_return_empty_on_failure(loader_name, expected):
         assert asyncio.run(getattr(module, loader_name)(_BrokenSession())) == expected
         return
 
-    from custom_components.swissweather import station_lookup as module
+    from custom_components.meteoswiss_forecast_warnings import station_lookup as module
 
     class _BrokenPollenClient:
         async def async_get_pollen_station_list(self):
@@ -698,7 +698,7 @@ def test_metadata_loaders_return_empty_on_failure(loader_name, expected):
 
 
 def test_pollen_station_loader_skips_invalid_station_rows():
-    from custom_components.swissweather import station_lookup as module
+    from custom_components.meteoswiss_forecast_warnings import station_lookup as module
 
     pollen_station = SimpleNamespace(
         name="Basel",
@@ -719,7 +719,7 @@ def test_pollen_station_loader_skips_invalid_station_rows():
 
 
 def test_meteo_client_returns_none_when_station_csv_unavailable():
-    from custom_components.swissweather import meteo
+    from custom_components.meteoswiss_forecast_warnings import meteo
 
     class _BrokenSession:
         def get(self, *args, **kwargs):
@@ -734,7 +734,7 @@ def test_meteo_client_returns_none_when_station_csv_unavailable():
 
 
 def test_meteo_client_normalizes_locale_language_tags():
-    from custom_components.swissweather import meteo
+    from custom_components.meteoswiss_forecast_warnings import meteo
 
     client = meteo.MeteoClient(object(), "fr-CH")
     assert client.language == "fr"
@@ -769,7 +769,7 @@ def test_runtime_connectivity_validation_uses_hass_language(monkeypatch) -> None
 
 
 def test_pollen_client_returns_none_on_json_failure():
-    from custom_components.swissweather import pollen
+    from custom_components.meteoswiss_forecast_warnings import pollen
 
     class _BrokenResponse:
         async def __aenter__(self):

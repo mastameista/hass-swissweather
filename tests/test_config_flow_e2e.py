@@ -16,12 +16,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.swissweather.config_flow import (
+from custom_components.meteoswiss_forecast_warnings.config_flow import (
     NO_POLLEN_STATION_OPTION,
     NO_WEATHER_STATION_OPTION,
     SEARCH_AGAIN_OPTION,
 )
-from custom_components.swissweather.const import (
+from custom_components.meteoswiss_forecast_warnings.const import (
     CONF_FORECAST_NAME,
     CONF_POLLEN_STATION_CODE,
     CONF_POST_CODE,
@@ -29,8 +29,8 @@ from custom_components.swissweather.const import (
     CONF_WARNINGS_ENABLED,
     DOMAIN,
 )
-from custom_components.swissweather.forecast_points import FORECAST_POINT_LIST_URL
-from custom_components.swissweather.meteo import FORECAST_URL
+from custom_components.meteoswiss_forecast_warnings.forecast_points import FORECAST_POINT_LIST_URL
+from custom_components.meteoswiss_forecast_warnings.meteo import FORECAST_URL
 
 QUERY = "forecast_query"
 POINT = "forecast_point"

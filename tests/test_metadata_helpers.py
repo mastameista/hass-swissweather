@@ -10,15 +10,15 @@ import pytest
 
 pytest.importorskip("homeassistant")
 
-from custom_components.swissweather import forecast_points, station_lookup
-from custom_components.swissweather.forecast_points import (
+from custom_components.meteoswiss_forecast_warnings import forecast_points, station_lookup
+from custom_components.meteoswiss_forecast_warnings.forecast_points import (
     ForecastPoint,
     find_forecast_point_by_id,
     find_forecast_point_by_stored_value,
     format_forecast_point_label,
     search_forecast_points,
 )
-from custom_components.swissweather.station_lookup import (
+from custom_components.meteoswiss_forecast_warnings.station_lookup import (
     PollenStationMetadataLoadError,
     async_load_pollen_station_list,
     find_station_by_code,

@@ -1,4 +1,4 @@
-"""The Swiss Weather integration."""
+"""The MeteoSwiss Forecast & Warnings integration."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -6,7 +6,7 @@ import logging
 import re
 from typing import Any
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -16,10 +16,12 @@ from homeassistant.helpers import (
     issue_registry as ir,
 )
 from homeassistant.helpers.issue_registry import IssueSeverity
+from homeassistant.loader import async_get_custom_components
 
 from .const import (
     CONF_FORECAST_POINT_TYPE,
     CONF_FORECAST_NAME,
+    CONF_IMPORTED_FROM,
     CONF_POLLEN_STATION_CODE,
     CONF_POLLEN_STATION_NAME,
     CONF_POST_CODE,
@@ -28,6 +30,7 @@ from .const import (
     CONF_WARNINGS_ENABLED,
     CONF_WEATHER_WARNINGS_NUMBER,
     DOMAIN,
+    LEGACY_DOMAIN,
 )
 from .coordinator import SwissPollenDataCoordinator, SwissWeatherDataCoordinator
 from .entity import (
@@ -87,7 +90,8 @@ _WARNING_ENTITY_SUFFIXES = (
 ISSUE_ID_MISSING_FORECAST_POINT = "missing_forecast_point"
 ISSUE_ID_MISSING_WEATHER_STATION = "missing_weather_station"
 ISSUE_ID_MISSING_POLLEN_STATION = "missing_pollen_station"
-REPAIRS_LEARN_MORE_URL = "https://github.com/izacus/hass-swissweather"
+ISSUE_ID_LEGACY_INTEGRATION = "legacy_integration_installed"
+REPAIRS_LEARN_MORE_URL = "https://github.com/mastameista/ha-meteoswiss-forecast-warnings"
 
 
 @dataclass
@@ -111,12 +115,12 @@ class SwissWeatherMetadata:
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate older Swiss Weather config entries."""
-    _LOGGER.debug("Migrating Swiss Weather entry %s from version %s", entry.entry_id, entry.version)
+    """Migrate older config entries."""
+    _LOGGER.debug("Migrating entry %s from version %s", entry.entry_id, entry.version)
 
     if entry.version > ENTRY_VERSION:
         _LOGGER.error(
-            "Cannot migrate Swiss Weather entry %s from unsupported future version %s",
+            "Cannot migrate entry %s from unsupported future version %s",
             entry.entry_id,
             entry.version,
         )
@@ -126,7 +130,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.config_entries.async_update_entry(entry, version=ENTRY_VERSION)
 
     _LOGGER.info(
-        "Swiss Weather entry %s migration complete at version %s",
+        "Entry %s migration complete at version %s",
         entry.entry_id,
         entry.version,
     )
@@ -172,6 +176,7 @@ async def _async_cleanup_legacy_devices(
         return
 
     station_code = _coerce_config_value(entry.data.get(CONF_STATION_CODE, ""))
+    # Device identifiers of izacus/hass-swissweather; the prefix is data, not our domain.
     legacy_identifiers = {f"swissweather-{post_code}"}
     if station_code:
         legacy_identifiers.add(f"swissweather-{post_code}-{station_code}")
@@ -194,7 +199,7 @@ async def _async_cleanup_legacy_devices(
         removed_count += 1
 
     if removed_count:
-        _LOGGER.info("Removed %d empty legacy swissweather devices", removed_count)
+        _LOGGER.info("Removed %d empty legacy devices", removed_count)
 
 
 async def _async_cleanup_legacy_warning_entities(
@@ -227,7 +232,7 @@ async def _async_cleanup_legacy_warning_entities(
             entity_registry.async_remove(entity_entry.entity_id)
             removed_count += 1
     if removed_count:
-        _LOGGER.info("Removed %d legacy swissweather warning entities", removed_count)
+        _LOGGER.info("Removed %d legacy warning entities", removed_count)
 
 
 async def _async_cleanup_disabled_warning_entities(
@@ -258,7 +263,7 @@ async def _async_cleanup_disabled_warning_entities(
 
     if removed_count:
         _LOGGER.info(
-            "Removed %d swissweather warning entities because warnings are disabled",
+            "Removed %d warning entities because warnings are disabled",
             removed_count,
         )
 
@@ -295,7 +300,7 @@ async def _async_sync_entry_device_names(
         updated_count += 1
 
     if updated_count:
-        _LOGGER.info("Updated %d swissweather device names from config entry metadata", updated_count)
+        _LOGGER.info("Updated %d device names from config entry metadata", updated_count)
 
 
 async def _async_migrate_warning_config(
@@ -493,8 +498,81 @@ def _async_sync_repairs_issues(
         )
 
 
+async def _async_take_over_legacy_entry(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> ConfigEntry:
+    """Move devices and entities of a legacy swissweather entry to this entry.
+
+    Entity IDs, unique IDs and device IDs stay the same, so history,
+    dashboards, automations, areas and user-chosen names carry over. Runs
+    once, on the first setup of an entry created by the import flow.
+    """
+    legacy_entry_id = entry.data[CONF_IMPORTED_FROM]
+    legacy_entry = hass.config_entries.async_get_entry(legacy_entry_id)
+    if legacy_entry is not None and legacy_entry.domain == LEGACY_DOMAIN:
+        if legacy_entry.state is ConfigEntryState.LOADED:
+            # Home Assistant only moves entities that are not loaded.
+            await hass.config_entries.async_unload(legacy_entry_id)
+
+        device_registry = dr.async_get(hass)
+        for device in dr.async_entries_for_config_entry(device_registry, legacy_entry_id):
+            device_registry.async_update_device(
+                device.id,
+                new_config_entry_id=entry.entry_id,
+                new_identifiers={
+                    _take_over_identifier(identifier, legacy_entry_id, entry.entry_id)
+                    for identifier in device.identifiers
+                },
+            )
+        entity_registry = er.async_get(hass)
+        for entity in er.async_entries_for_config_entry(entity_registry, legacy_entry_id):
+            entity_registry.async_update_entity_platform(
+                entity.entity_id, DOMAIN, new_config_entry_id=entry.entry_id
+            )
+        await hass.config_entries.async_remove(legacy_entry_id)
+        _LOGGER.info(
+            "Took over legacy swissweather entry %s as %s", legacy_entry_id, entry.entry_id
+        )
+
+    data = {key: value for key, value in entry.data.items() if key != CONF_IMPORTED_FROM}
+    hass.config_entries.async_update_entry(entry, data=data)
+    return entry
+
+
+def _take_over_identifier(
+    identifier: tuple[str, str], legacy_entry_id: str, entry_id: str
+) -> tuple[str, str]:
+    """Translate a legacy device identifier to this integration's domain."""
+    domain, value = identifier
+    if domain != LEGACY_DOMAIN:
+        return identifier
+    if value.startswith(f"{legacy_entry_id}-"):
+        value = f"{entry_id}-{value.removeprefix(f'{legacy_entry_id}-')}"
+    return (DOMAIN, value)
+
+
+async def _async_sync_legacy_integration_issue(hass: HomeAssistant) -> None:
+    """Ask to remove the legacy integration once nothing uses it any more."""
+    still_installed = LEGACY_DOMAIN in await async_get_custom_components(hass)
+    if still_installed and not hass.config_entries.async_entries(LEGACY_DOMAIN):
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            ISSUE_ID_LEGACY_INTEGRATION,
+            is_fixable=False,
+            severity=IssueSeverity.WARNING,
+            translation_key=ISSUE_ID_LEGACY_INTEGRATION,
+            learn_more_url=REPAIRS_LEARN_MORE_URL,
+        )
+    else:
+        ir.async_delete_issue(hass, DOMAIN, ISSUE_ID_LEGACY_INTEGRATION)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Swiss Weather from a config entry."""
+    """Set up a forecast place from a config entry."""
+    if CONF_IMPORTED_FROM in entry.data:
+        entry = await _async_take_over_legacy_entry(hass, entry)
+    await _async_sync_legacy_integration_issue(hass)
     entry = await _async_migrate_warning_config(hass, entry)
     entry = await _async_ensure_entry_unique_id(hass, entry)
     metadata = await _async_load_metadata(hass, entry)

@@ -12,9 +12,9 @@ pytest.importorskip("homeassistant")
 
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from custom_components.swissweather import coordinator as coordinator_module
-from custom_components.swissweather.const import CONF_POST_CODE
-from custom_components.swissweather.coordinator import (
+from custom_components.meteoswiss_forecast_warnings import coordinator as coordinator_module
+from custom_components.meteoswiss_forecast_warnings.const import CONF_POST_CODE
+from custom_components.meteoswiss_forecast_warnings.coordinator import (
     SwissWeatherDataCoordinator,
     WeatherData,
     build_warning_snapshot,

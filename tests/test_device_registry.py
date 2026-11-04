@@ -17,12 +17,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.swissweather.__init__ import (
+from custom_components.meteoswiss_forecast_warnings.__init__ import (
     _async_cleanup_legacy_devices,
     _async_cleanup_optional_devices,
     _async_sync_entry_device_names,
 )
-from custom_components.swissweather.const import (
+from custom_components.meteoswiss_forecast_warnings.const import (
     CONF_POLLEN_STATION_CODE,
     CONF_POLLEN_STATION_NAME,
     CONF_POST_CODE,

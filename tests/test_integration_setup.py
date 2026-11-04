@@ -17,7 +17,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.swissweather.const import (
+from custom_components.meteoswiss_forecast_warnings.const import (
     CONF_FORECAST_NAME,
     CONF_FORECAST_POINT_TYPE,
     CONF_POLLEN_STATION_CODE,
@@ -28,7 +28,7 @@ from custom_components.swissweather.const import (
     CONF_WARNINGS_ENABLED,
     DOMAIN,
 )
-from custom_components.swissweather.meteo import FORECAST_URL
+from custom_components.meteoswiss_forecast_warnings.meteo import FORECAST_URL
 
 FULL = {
     CONF_POST_CODE: "800100",
@@ -163,9 +163,9 @@ async def test_setup_survives_unavailable_metadata(hass, meteoswiss_api, failing
     """Metadata only refines names and repairs; it must not block setup."""
     from homeassistant.helpers import issue_registry as ir
 
-    from custom_components.swissweather.forecast_points import FORECAST_POINT_LIST_URL
-    from custom_components.swissweather.pollen import POLLEN_STATIONS_URL
-    from custom_components.swissweather.station_lookup import STATION_LIST_URL
+    from custom_components.meteoswiss_forecast_warnings.forecast_points import FORECAST_POINT_LIST_URL
+    from custom_components.meteoswiss_forecast_warnings.pollen import POLLEN_STATIONS_URL
+    from custom_components.meteoswiss_forecast_warnings.station_lookup import STATION_LIST_URL
 
     url = {
         "forecast_points": FORECAST_POINT_LIST_URL,

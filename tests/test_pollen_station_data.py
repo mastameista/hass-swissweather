@@ -10,8 +10,8 @@ import pytest
 
 pytest.importorskip("homeassistant")
 
-from custom_components.swissweather import pollen
-from custom_components.swissweather.pollen import PollenClient
+from custom_components.meteoswiss_forecast_warnings import pollen
+from custom_components.meteoswiss_forecast_warnings.pollen import PollenClient
 
 MEASURED = {"value": "12", "date": 1793797200000, "summary": "Birch, measured on 4.11.2026"}
 # What MeteoSwiss serves for a station without a current reading (seen for PBS).
