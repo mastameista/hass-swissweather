@@ -98,9 +98,7 @@ rules:
     comment: Devices follow the configured places, not a changing device list.
   entity-category: done
   entity-device-class: done
-  entity-disabled-by-default:
-    status: todo
-    comment: Review which of the ~35 entities per entry should start disabled.
+  entity-disabled-by-default: done
   entity-translations: done
   exception-translations: done
   icon-translations:

@@ -72,7 +72,13 @@ async def test_full_setup_creates_three_devices_and_live_entities(hass, meteoswi
     assert sorted(d.name for d in devices) == ["Zürich", "Zürich / Fluntern ZH", "Zürich ZH"]
 
     entities = _entities(hass, entry)
-    states = {uid: hass.states.get(e.entity_id) for uid, e in entities.items()}
+    disabled = sorted(uid for uid, e in entities.items() if e.disabled_by is not None)
+    assert disabled == ["800100.pressure_qnh", "800100.time", "pollen-800100.pollen-time"]
+    states = {
+        uid: hass.states.get(e.entity_id)
+        for uid, e in entities.items()
+        if e.disabled_by is None
+    }
     assert all(state is not None for state in states.values())
     assert not [uid for uid, s in states.items() if s.state == STATE_UNAVAILABLE]
 

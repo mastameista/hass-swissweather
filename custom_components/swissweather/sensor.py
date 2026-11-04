@@ -72,6 +72,7 @@ class SwissWeatherSensorEntry:
     device_class: SensorDeviceClass | None
     state_class: SensorStateClass | None
     entity_category: EntityCategory | None = None
+    enabled_by_default: bool = True
 
 
 @dataclass
@@ -81,6 +82,7 @@ class SwissPollenSensorEntry:
     data_function: Callable[[CurrentPollen], StateType | Decimal | datetime]
     device_class: SensorDeviceClass | None
     entity_category: EntityCategory | None = None
+    enabled_by_default: bool = True
 
 
 def first_or_none(value: FloatValue | None) -> float | None:
@@ -90,7 +92,7 @@ def first_or_none(value: FloatValue | None) -> float | None:
 
 
 SENSORS: list[SwissWeatherSensorEntry] = [
-    SwissWeatherSensorEntry("time", "time", lambda weather: weather.date, None, SensorDeviceClass.TIMESTAMP, None, EntityCategory.DIAGNOSTIC),
+    SwissWeatherSensorEntry("time", "time", lambda weather: weather.date, None, SensorDeviceClass.TIMESTAMP, None, EntityCategory.DIAGNOSTIC, enabled_by_default=False),
     SwissWeatherSensorEntry("temperature", "temperature", lambda weather: first_or_none(weather.airTemperature), UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT),
     SwissWeatherSensorEntry("precipitation", "precipitation", lambda weather: first_or_none(weather.precipitation), UnitOfPrecipitationDepth.MILLIMETERS, SensorDeviceClass.PRECIPITATION, SensorStateClass.MEASUREMENT),
     SwissWeatherSensorEntry("sunshine", "sunshine", lambda weather: first_or_none(weather.sunshine), UnitOfTime.MINUTES, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT),
@@ -102,11 +104,11 @@ SENSORS: list[SwissWeatherSensorEntry] = [
     SwissWeatherSensorEntry("gust_peak1s", "gust_peak1s", lambda weather: first_or_none(weather.gustPeak1s), UnitOfSpeed.KILOMETERS_PER_HOUR, SensorDeviceClass.WIND_SPEED, SensorStateClass.MEASUREMENT),
     SwissWeatherSensorEntry("pressure", "pressure", lambda weather: first_or_none(weather.pressureStationLevel), UnitOfPressure.HPA, SensorDeviceClass.ATMOSPHERIC_PRESSURE, SensorStateClass.MEASUREMENT),
     SwissWeatherSensorEntry("pressure_qff", "pressure_qff", lambda weather: first_or_none(weather.pressureSeaLevel), UnitOfPressure.HPA, SensorDeviceClass.ATMOSPHERIC_PRESSURE, SensorStateClass.MEASUREMENT),
-    SwissWeatherSensorEntry("pressure_qnh", "pressure_qnh", lambda weather: first_or_none(weather.pressureSeaLevelAtStandardAtmosphere), UnitOfPressure.HPA, SensorDeviceClass.ATMOSPHERIC_PRESSURE, SensorStateClass.MEASUREMENT),
+    SwissWeatherSensorEntry("pressure_qnh", "pressure_qnh", lambda weather: first_or_none(weather.pressureSeaLevelAtStandardAtmosphere), UnitOfPressure.HPA, SensorDeviceClass.ATMOSPHERIC_PRESSURE, SensorStateClass.MEASUREMENT, enabled_by_default=False),
 ]
 
 POLLEN_SENSORS: list[SwissPollenSensorEntry] = [
-    SwissPollenSensorEntry("pollen-time", "pollen_time", lambda pollen: pollen.timestamp, SensorDeviceClass.TIMESTAMP, EntityCategory.DIAGNOSTIC),
+    SwissPollenSensorEntry("pollen-time", "pollen_time", lambda pollen: pollen.timestamp, SensorDeviceClass.TIMESTAMP, EntityCategory.DIAGNOSTIC, enabled_by_default=False),
     SwissPollenSensorEntry("birch", "birch", lambda pollen: first_or_none(pollen.birch), None),
     SwissPollenSensorEntry("grasses", "grasses", lambda pollen: first_or_none(pollen.grasses), None),
     SwissPollenSensorEntry("alder", "alder", lambda pollen: first_or_none(pollen.alder), None),
@@ -245,6 +247,7 @@ class SwissWeatherSensor(SwissWeatherEntity, SensorEntity):
             device_class=sensor_entry.device_class,
             state_class=sensor_entry.state_class,
             entity_category=sensor_entry.entity_category,
+            entity_registry_enabled_default=sensor_entry.enabled_by_default,
         )
         self._sensor_entry = sensor_entry
         self._attr_unique_id = f"{post_code}.{sensor_entry.key}"
@@ -497,6 +500,7 @@ class SwissPollenSensor(SwissPollenEntity, SensorEntity):
             native_unit_of_measurement=unit,
             state_class=state_class,
             entity_category=sensor_entry.entity_category,
+            entity_registry_enabled_default=sensor_entry.enabled_by_default,
         )
         self._sensor_entry = sensor_entry
         self._attr_unique_id = f"pollen-{post_code}.{sensor_entry.key}"
