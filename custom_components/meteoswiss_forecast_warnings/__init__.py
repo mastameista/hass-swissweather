@@ -172,7 +172,13 @@ async def _async_cleanup_optional_devices(
 async def _async_cleanup_legacy_devices(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> None:
-    """Remove empty devices from the legacy upstream device model."""
+    """Remove empty devices from the legacy upstream device model.
+
+    Swiss Weather kept every entity on one device per entry; this integration
+    splits them over a forecast, a weather station and a pollen device. Before
+    an emptied legacy device goes, its area moves to those devices, unless the
+    user already gave them one.
+    """
     post_code = _coerce_config_value(entry.data.get(CONF_POST_CODE, ""))
     if not post_code:
         return
@@ -187,16 +193,29 @@ async def _async_cleanup_legacy_devices(
     entity_registry = er.async_get(hass)
     removed_count = 0
 
+    legacy_device_identifiers = {(DOMAIN, identifier) for identifier in legacy_identifiers}
+    current_devices = [
+        device
+        for device in dr.async_entries_for_config_entry(device_registry, entry.entry_id)
+        if not device.identifiers & legacy_device_identifiers
+    ]
+
     # A device belongs to exactly one config entry, so only this entry's legacy
     # devices are looked at; another entry may reuse the same identifier.
     for device in device_registry.async_get_devices(
-        identifiers={(DOMAIN, identifier) for identifier in legacy_identifiers},
+        identifiers=legacy_device_identifiers,
         config_entry_id=entry.entry_id,
     ):
         if er.async_entries_for_device(
             entity_registry, device.id, include_disabled_entities=True
         ):
             continue
+        if device.area_id is not None:
+            for current in current_devices:
+                # Read again: an earlier legacy device may have set an area.
+                refreshed = device_registry.async_get(current.id)
+                if refreshed is not None and refreshed.area_id is None:
+                    device_registry.async_update_device(current.id, area_id=device.area_id)
         device_registry.async_remove_device(device.id)
         removed_count += 1
 

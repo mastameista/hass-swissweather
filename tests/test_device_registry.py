@@ -14,7 +14,11 @@ import pytest
 pytest.importorskip("pytest_homeassistant_custom_component")
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import (
+    area_registry as ar,
+    device_registry as dr,
+    entity_registry as er,
+)
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.meteoswiss_forecast_warnings.__init__ import (
@@ -111,6 +115,39 @@ async def test_legacy_device_with_entities_is_kept(hass):
     await _async_cleanup_legacy_devices(hass, entry)
 
     assert dr.async_get(hass).async_get(legacy.id) is not None
+
+
+async def test_area_of_an_emptied_legacy_device_moves_to_the_new_devices(hass):
+    entry = _entry(hass, "entry-legacy", **{CONF_POST_CODE: "9000", CONF_STATION_CODE: "STG"})
+    area_registry = ar.async_get(hass)
+    garden = area_registry.async_create("Garten")
+    roof = area_registry.async_create("Dach")
+    legacy = _device(hass, entry, "swissweather-9000-STG")
+    dr.async_get(hass).async_update_device(legacy.id, area_id=garden.id)
+    forecast = _device(hass, entry, "entry-legacy-forecast")
+    station = _device(hass, entry, "entry-legacy-weather-station")
+    dr.async_get(hass).async_update_device(station.id, area_id=roof.id)
+
+    await _async_cleanup_legacy_devices(hass, entry)
+
+    device_registry = dr.async_get(hass)
+    assert device_registry.async_get(legacy.id) is None
+    assert device_registry.async_get(forecast.id).area_id == garden.id
+    # An area the user already set stays.
+    assert device_registry.async_get(station.id).area_id == roof.id
+
+
+async def test_area_stays_while_the_legacy_device_still_has_entities(hass):
+    entry = _entry(hass, "entry-legacy", **{CONF_POST_CODE: "9000", CONF_STATION_CODE: None})
+    garden = ar.async_get(hass).async_create("Garten")
+    legacy = _device(hass, entry, "swissweather-9000")
+    dr.async_get(hass).async_update_device(legacy.id, area_id=garden.id)
+    _entity(hass, entry, legacy, "9000.temperature")
+    forecast = _device(hass, entry, "entry-legacy-forecast")
+
+    await _async_cleanup_legacy_devices(hass, entry)
+
+    assert dr.async_get(hass).async_get(forecast.id).area_id is None
 
 
 async def test_legacy_cleanup_ignores_devices_of_other_entries(hass):
