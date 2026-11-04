@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> This fork is no longer maintained. Its work continues as **[MeteoSwiss Forecast & Warnings](https://github.com/mastameista/ha-meteoswiss-forecast-warnings)**, which can take over existing Swiss Weather entries.
+
 # MeteoSwiss integration for HASS
 
 This is an integration to download data from [MeteoSwiss](https://www.meteoschweiz.admin.ch/#tab=forecast-map).
