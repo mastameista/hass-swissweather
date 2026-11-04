@@ -2,9 +2,6 @@ name: Tests
 
 on:
   push:
-    branches:
-      - master
-      - main
   pull_request:
   workflow_dispatch:
 
@@ -37,9 +34,26 @@ jobs:
           pytest --cov=custom_components/swissweather --cov-report=term tests
 
       - name: Publish coverage summary
-        if: github.event_name == 'pull_request'
+        if: always()
         run: |
           if [ -f .coverage ]; then
             echo "## Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
             coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
           fi
+
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      # Pyflakes rules only for now (undefined names, unused imports): they
+      # catch real defects, e.g. the NameError a merge introduced in 60421bd.
+      # Style rules follow once the existing code is brought in line.
+      - name: Run ruff
+        run: |
+          uvx ruff@0.17.1 check --select F custom_components tests
