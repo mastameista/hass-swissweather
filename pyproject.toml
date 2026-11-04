@@ -1,0 +1,6 @@
+[tool.pytest.ini_options]
+# pytest-homeassistant-custom-component provides async autouse fixtures and the
+# `hass` fixture; Home Assistant runs its own test suite in this mode.
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
