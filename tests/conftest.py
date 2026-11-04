@@ -59,7 +59,8 @@ if importlib.util.find_spec("pytest_homeassistant_custom_component") is not None
                     "content": (FIXTURES / "weather_stations.csv").read_bytes()
                 },
                 POLLEN_STATIONS_URL: {
-                    "content": (FIXTURES / "pollen_stations.csv").read_bytes()
+                    # Excerpt of the live file, which is latin-1 encoded.
+                    "content": (FIXTURES / "pollen_stations_live.csv").read_bytes()
                 },
                 CURRENT_CONDITION_URL: {
                     "content": (FIXTURES / "vqha80_sample.csv").read_bytes()

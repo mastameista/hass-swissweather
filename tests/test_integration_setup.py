@@ -67,12 +67,9 @@ async def test_full_setup_creates_three_devices_and_live_entities(hass, meteoswi
     entry = await _setup(hass, FULL)
 
     assert entry.state is ConfigEntryState.LOADED
+    # Setup aligns device names with the live station metadata.
     devices = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
-    assert sorted(d.name for d in devices) == [
-        "Zürich",
-        "Zürich / Fluntern ZH",
-        "Zürich-Flughafen ZH",
-    ]
+    assert sorted(d.name for d in devices) == ["Zürich", "Zürich / Fluntern ZH", "Zürich ZH"]
 
     entities = _entities(hass, entry)
     states = {uid: hass.states.get(e.entity_id) for uid, e in entities.items()}
@@ -86,7 +83,12 @@ async def test_full_setup_creates_three_devices_and_live_entities(hass, meteoswi
     assert "pollen-800100.birch" in entities
 
 
-async def test_weather_entity_serves_hourly_and_daily_forecasts(hass, meteoswiss_api):
+async def test_weather_entity_serves_hourly_and_daily_forecasts(
+    hass, meteoswiss_api, freezer
+):
+    # Hourly forecasts start at the current hour; the recorded payload starts
+    # at 2026-10-03 22:00 UTC.
+    freezer.move_to("2026-10-03T22:30:00+00:00")
     entry = await _setup(hass, FULL)
     weather_id = _entities(hass, entry)["swiss_weather.800100"].entity_id
 
