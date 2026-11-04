@@ -80,11 +80,12 @@ rules:
   entity-translations: done
   exception-translations: done
   icon-translations:
-    status: todo
+    status: exempt
     comment: >-
-      Static icons are in icons.json. The primary/secondary/tertiary warning
-      sensors still set their icon in code: dashboards read it from the icon
-      state attribute, which icons.json does not provide.
+      Static icons are in icons.json. The primary, secondary and tertiary
+      warning sensors set their icon in code, by warning type: dashboard cards
+      such as dmoo500/ha-swissweather-card read it from the icon state
+      attribute, which icons.json does not provide.
   reconfiguration-flow: done
   repair-issues: done
   stale-devices: done
