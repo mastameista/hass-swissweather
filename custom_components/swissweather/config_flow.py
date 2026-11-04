@@ -527,8 +527,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Validate the selected forecast point before persisting the entry."""
         try:
             client = MeteoClient(
-                async_get_clientsession(self.hass),
-                getattr(getattr(self.hass, "config", None), "language", None),
+                async_get_clientsession(self.hass), self.hass.config.language
             )
             forecast = await client.async_get_forecast(
                 resolved_data[CONF_POST_CODE],

@@ -1,0 +1,5 @@
+point_id;point_type_id;station_abbr;postal_code;point_name;point_type_de;point_type_fr;point_type_it;point_type_en;point_height_masl;point_coordinates_lv95_east;point_coordinates_lv95_north;point_coordinates_wgs84_lat;point_coordinates_wgs84_lon
+800100;2;;8001;Zürich;Zentrum Postleitzahl;Centre code postal;Centro codice postale;Postal code center;409.0;2683348.0;1247414.0;47.372289;8.542189
+851203;2;;8512;Wetzikon TG;Zentrum Postleitzahl;Centre code postal;Centro codice postale;Postal code center;612.0;2717582.0;1266341.0;47.537269;9.000342
+862000;2;;8620;Wetzikon ZH;Zentrum Postleitzahl;Centre code postal;Centro codice postale;Postal code center;549.0;2702622.0;1242346.0;47.323994;8.796175
+711;3;;;Säntis;Point of Interest;Point of Interest;Point of Interest;Point of Interest;2502.0;2744171.0;1234917.0;47.249425;9.343242
