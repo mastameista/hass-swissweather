@@ -1,0 +1,135 @@
+rules:
+  # Bronze
+  action-setup:
+    status: exempt
+    comment: The integration registers no service actions.
+  appropriate-polling: done
+  brands:
+    status: todo
+    comment: Needs an own icon; the previous one reused the MeteoSwiss app icon.
+  common-modules:
+    status: todo
+    comment: >-
+      Coordinators live in coordinator.py, but the warning entities still repeat
+      their device and coordinator setup; move it into a shared entity.py base.
+  config-flow: done
+  config-flow-test-coverage:
+    status: todo
+    comment: config_flow.py is at 90 % and its tests drive the flow with stand-in objects.
+  dependency-transparency: done
+  docs-actions:
+    status: exempt
+    comment: The integration registers no service actions.
+  docs-high-level-description:
+    status: todo
+    comment: README is still upstream's; the fork README draft lives outside the repo.
+  docs-installation-instructions:
+    status: todo
+    comment: Covered by the README rewrite for the own release.
+  docs-removal-instructions:
+    status: todo
+    comment: Covered by the README rewrite for the own release.
+  entity-event-setup:
+    status: exempt
+    comment: Entities only follow their coordinator and subscribe to no events.
+  entity-unique-id: done
+  has-entity-name: done
+  runtime-data: done
+  test-before-configure: done
+  test-before-setup: done
+  unique-config-entry: done
+  docs-conditions:
+    status: exempt
+    comment: The integration provides no conditions.
+  docs-triggers:
+    status: exempt
+    comment: The integration provides no triggers.
+
+  # Silver
+  action-exceptions:
+    status: exempt
+    comment: The integration registers no service actions.
+  config-entry-unloading: done
+  docs-configuration-parameters:
+    status: exempt
+    comment: There is no options flow; settings change through reconfigure.
+  docs-installation-parameters:
+    status: todo
+    comment: Covered by the README rewrite for the own release.
+  entity-unavailable: done
+  integration-owner:
+    status: todo
+    comment: manifest.json still names the upstream maintainer.
+  log-when-unavailable: done
+  parallel-updates:
+    status: todo
+    comment: Platforms do not declare PARALLEL_UPDATES.
+  reauthentication-flow:
+    status: exempt
+    comment: MeteoSwiss data needs no authentication.
+  test-coverage:
+    status: todo
+    comment: >-
+      84 % overall; weather.py 49 %, station_lookup.py 67 %, sensor.py 68 %,
+      naming.py 69 %. Most tests build entities from stand-in objects instead of
+      setting up the integration.
+
+  # Gold
+  devices: done
+  diagnostics: done
+  discovery:
+    status: exempt
+    comment: A cloud service; there is nothing to discover on the network.
+  discovery-update-info:
+    status: exempt
+    comment: A cloud service; there is nothing to discover on the network.
+  docs-data-update:
+    status: todo
+    comment: Covered by the README rewrite for the own release.
+  docs-examples:
+    status: todo
+    comment: Covered by the README rewrite for the own release.
+  docs-known-limitations:
+    status: todo
+    comment: >-
+      Covered by the README rewrite; must mention the undocumented app endpoint
+      and the 8-day forecast horizon.
+  docs-supported-devices:
+    status: exempt
+    comment: A cloud service without physical devices.
+  docs-supported-functions:
+    status: todo
+    comment: Covered by the README rewrite for the own release.
+  docs-troubleshooting:
+    status: todo
+    comment: Covered by the README rewrite for the own release.
+  docs-use-cases:
+    status: todo
+    comment: Covered by the README rewrite for the own release.
+  dynamic-devices:
+    status: exempt
+    comment: Devices follow the configured places, not a changing device list.
+  entity-category:
+    status: todo
+    comment: The update timestamp sensor should be a diagnostic entity.
+  entity-device-class: done
+  entity-disabled-by-default:
+    status: todo
+    comment: Review which of the ~35 entities per entry should start disabled.
+  entity-translations: done
+  exception-translations:
+    status: todo
+    comment: UpdateFailed and ConfigEntryNotReady messages are English literals.
+  icon-translations:
+    status: todo
+    comment: Icons come from icon properties instead of icons.json.
+  reconfiguration-flow: done
+  repair-issues: done
+  stale-devices: done
+
+  # Platinum
+  async-dependency: done
+  inject-websession: done
+  strict-typing:
+    status: todo
+    comment: No mypy configuration or typed-package marker yet.
