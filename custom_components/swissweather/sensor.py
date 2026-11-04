@@ -5,8 +5,6 @@ from decimal import Decimal
 import logging
 from collections.abc import Callable
 
-from propcache.api import cached_property
-
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -322,10 +320,6 @@ class SwissWeatherWarningCountSensor(
             "next_warning_start": snapshot.next_warning_start,
         }
 
-    @cached_property
-    def icon(self):
-        return "mdi:alert-plus-outline"
-
 
 class SwissWeatherHighestWarningLevelSensor(
     WarningAvailabilityMixin,
@@ -375,10 +369,6 @@ class SwissWeatherHighestWarningLevelSensor(
             "level_name": level_name,
             "icon_color": get_color_for_warning_level(highest_level),
         }
-
-    @cached_property
-    def icon(self):
-        return "mdi:alert-octagram-outline"
 
 
 class SwissWeatherWarningSlotSensor(
@@ -528,10 +518,6 @@ class SwissPollenSensor(CoordinatorEntity[SwissPollenDataCoordinator], SensorEnt
             return None
         return self._sensor_entry.data_function(self.coordinator.data)
 
-    @cached_property
-    def icon(self):
-        return "mdi:flower-pollen"
-
 
 def get_color_for_pollen_level(level: PollenLevel | None) -> str:
     """Return the icon color for the corresponding pollen level."""
@@ -587,7 +573,3 @@ class SwissPollenLevelSensor(CoordinatorEntity[SwissPollenDataCoordinator], Sens
         value = self._sensor_entry.data_function(self.coordinator.data)
         level = get_pollen_level(value, self._sensor_entry.key)
         return {"icon_color": get_color_for_pollen_level(level)}
-
-    @cached_property
-    def icon(self):
-        return "mdi:flower-pollen-outline"

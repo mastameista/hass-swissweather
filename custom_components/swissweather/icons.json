@@ -1,0 +1,65 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "has_warnings": {
+        "default": "mdi:alert-outline"
+      },
+      "has_active_warnings": {
+        "default": "mdi:alert"
+      }
+    },
+    "sensor": {
+      "warning_count": {
+        "default": "mdi:alert-plus-outline"
+      },
+      "highest_warning_level": {
+        "default": "mdi:alert-octagram-outline"
+      },
+      "pollen_time": {
+        "default": "mdi:flower-pollen"
+      },
+      "birch": {
+        "default": "mdi:flower-pollen"
+      },
+      "grasses": {
+        "default": "mdi:flower-pollen"
+      },
+      "alder": {
+        "default": "mdi:flower-pollen"
+      },
+      "hazel": {
+        "default": "mdi:flower-pollen"
+      },
+      "beech": {
+        "default": "mdi:flower-pollen"
+      },
+      "ash": {
+        "default": "mdi:flower-pollen"
+      },
+      "oak": {
+        "default": "mdi:flower-pollen"
+      },
+      "birch_level": {
+        "default": "mdi:flower-pollen-outline"
+      },
+      "grasses_level": {
+        "default": "mdi:flower-pollen-outline"
+      },
+      "alder_level": {
+        "default": "mdi:flower-pollen-outline"
+      },
+      "hazel_level": {
+        "default": "mdi:flower-pollen-outline"
+      },
+      "beech_level": {
+        "default": "mdi:flower-pollen-outline"
+      },
+      "ash_level": {
+        "default": "mdi:flower-pollen-outline"
+      },
+      "oak_level": {
+        "default": "mdi:flower-pollen-outline"
+      }
+    }
+  }
+}

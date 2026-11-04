@@ -41,3 +41,11 @@ def test_every_raised_translation_key_has_a_message():
 
     assert used, "expected translated exceptions in the integration"
     assert used <= set(_load("strings.json")["exceptions"])
+
+
+def test_every_icon_belongs_to_a_translated_entity():
+    """icons.json is keyed by translation_key; a typo would silently drop the icon."""
+    icons = _load("icons.json")["entity"]
+    entities = _load("strings.json")["entity"]
+    for platform, keys in icons.items():
+        assert set(keys) <= set(entities[platform]), (platform, set(keys) - set(entities[platform]))

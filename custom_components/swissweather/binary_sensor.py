@@ -73,10 +73,6 @@ class SwissWeatherHasWarningsBinarySensor(
             return None
         return self.coordinator.data.warning_snapshot.count > 0
 
-    @property
-    def icon(self) -> str:
-        return "mdi:alert-outline"
-
 
 class SwissWeatherHasActiveWarningsBinarySensor(
     WarningAvailabilityMixin,
@@ -105,7 +101,3 @@ class SwissWeatherHasActiveWarningsBinarySensor(
         if self.coordinator.data is None:
             return None
         return len(self.coordinator.data.warning_snapshot.active_warnings) > 0
-
-    @property
-    def icon(self) -> str:
-        return "mdi:alert"
