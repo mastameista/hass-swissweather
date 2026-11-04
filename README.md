@@ -170,4 +170,4 @@ logger:
 
 This integration grew out of [Swiss Weather](https://github.com/izacus/hass-swissweather) by Jernej Virag and keeps its history. Licensed under the [Apache License 2.0](LICENSE).
 
-Weather data © MeteoSwiss.
+Weather data © MeteoSwiss. The name MeteoSwiss and the app icon used as this integration's icon belong to the Federal Office of Meteorology and Climatology MeteoSwiss.

@@ -6,7 +6,9 @@ rules:
   appropriate-polling: done
   brands:
     status: done
-    comment: Own icon in brand/; no MeteoSwiss logo or Swiss cross.
+    comment: >-
+      Local brand images in brand/ (served by Home Assistant 2026.10 for
+      custom integrations); the current MeteoSwiss app icon.
   common-modules: done
   config-flow: done
   config-flow-test-coverage: done
