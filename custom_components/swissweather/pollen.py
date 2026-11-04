@@ -206,6 +206,8 @@ class PollenClient:
                 return (None, None)
             if not isinstance(stations, list):
                 raise PollenDataError(f"Unexpected MeteoSwiss pollen stations from {url}")
+            # A station can be listed more than once; read past unusable entries.
+            station_listed = False
             for station in stations:
                 if not isinstance(station, dict):
                     continue
@@ -215,18 +217,21 @@ class PollenClient:
                     or station_id.lower() != station_abbrev.lower()
                 ):
                     continue
+                station_listed = True
                 current = station.get("current")
-                if not isinstance(current, dict):
-                    logger.warning(
-                        "No current data for %s in dataset for %s!",
-                        station_abbrev,
-                        pollen_key,
+                if not isinstance(current, dict) or (
+                    current.get("date") is None and current.get("value") is None
+                ):
+                    # MeteoSwiss reports "no data" this way, e.g. while a
+                    # station is out of season or down. Not an error.
+                    logger.debug(
+                        "No current %s reading for %s", pollen_key, station_abbrev
                     )
                     continue
                 timestamp = _parse_epoch_millis(current.get("date"))
                 if timestamp is None:
-                    # A reading that cannot be dated may be stale; keep looking
-                    # rather than presenting it as current.
+                    # A reading that cannot be dated may be stale; do not
+                    # present it as current.
                     logger.warning(
                         "No valid timestamp for %s in dataset for %s!",
                         station_abbrev,
@@ -235,9 +240,10 @@ class PollenClient:
                     continue
                 value = to_float(current.get("value"))
                 return (value, timestamp)
-            logger.warning(
-                "Couldn't find %s in dataset for %s!", station_abbrev, pollen_key
-            )
+            if not station_listed:
+                logger.warning(
+                    "Couldn't find %s in dataset for %s!", station_abbrev, pollen_key
+                )
             return (None, None)
         except (ClientError, TimeoutError) as err:
             raise PollenConnectionError(
