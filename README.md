@@ -59,7 +59,7 @@ To change the stations or the warning setting later, open the entry and select *
 
 If the integration [Swiss Weather](https://github.com/izacus/hass-swissweather) (`swissweather`) is set up, adding this integration first offers to **take over the existing entries**. Entity IDs, history, areas, device names, dashboards and automations stay as they are; the Swiss Weather entries are removed afterwards. A repair issue then reminds you to remove Swiss Weather in HACS.
 
-Entries of Swiss Weather 1.2 and older use other warning entities; this integration replaces them with the warning entities described below.
+Swiss Weather keeps all entities of an entry on one device. This integration splits them over a forecast, a weather station and a pollen device and gives those the area of the old device. The warning entities of Swiss Weather (`most_severe_weather_warning`, `weather_warning_2` and so on) are replaced by the warning entities described below; dashboards and automations that use them need updating.
 
 ## Entities
 
