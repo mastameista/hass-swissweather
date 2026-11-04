@@ -35,7 +35,7 @@ TO_REDACT = {
 
 def _serialize(value: Any) -> Any:
     """Convert runtime objects into diagnostics-safe data."""
-    if is_dataclass(value):
+    if is_dataclass(value) and not isinstance(value, type):
         return _serialize(asdict(value))
     if isinstance(value, datetime):
         return value.isoformat()

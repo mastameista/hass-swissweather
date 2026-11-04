@@ -131,23 +131,6 @@ def next_warning_boundary(
     return min(boundaries, default=None)
 
 
-class WarningAvailabilityMixin:
-    """Mark warning entities unavailable while the warnings cannot be read.
-
-    Mix in before CoordinatorEntity. Weather and forecast entities stay
-    available, since only the warnings part of the payload failed.
-    """
-
-    @property
-    def available(self) -> bool:
-        data = self.coordinator.data
-        return (
-            super().available
-            and data is not None
-            and data.warning_snapshot.available
-        )
-
-
 class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
     """Coordinates data loads for all weather entities."""
 

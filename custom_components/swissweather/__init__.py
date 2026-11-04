@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import logging
 import re
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -547,7 +548,7 @@ async def _async_ensure_entry_names(
     metadata: SwissWeatherMetadata | None = None,
 ) -> ConfigEntry:
     """Populate cached display names in older config entries and keep the title in sync."""
-    data_updates = {}
+    data_updates: dict[str, Any] = {}
     if metadata is None:
         metadata = await _async_load_metadata(hass, entry)
 

@@ -143,3 +143,20 @@ def test_only_the_update_timestamps_are_diagnostic_entities():
         if entry.entity_category is EntityCategory.DIAGNOSTIC
     ]
     assert diagnostic == ["time", "pollen-time"]
+
+
+@pytest.mark.parametrize(
+    "entity_class", ["SwissWeatherWarningSlotSensor", "SwissPollenLevelSensor"]
+)
+def test_long_attributes_are_kept_out_of_the_recorder(entity_class):
+    """Regression: unrecorded attributes were set per instance, which HA ignores.
+
+    Home Assistant combines them once per class in __init_subclass__, so the
+    warning texts were written to the database on every state change.
+    """
+    from homeassistant.const import MATCH_ALL
+
+    from custom_components.swissweather import sensor
+
+    cls = getattr(sensor, entity_class)
+    assert MATCH_ALL in cls._Entity__combined_unrecorded_attributes

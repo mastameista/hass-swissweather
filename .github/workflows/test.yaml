@@ -61,8 +61,6 @@ jobs:
   typecheck:
     name: Type check (mypy)
     runs-on: ubuntu-latest
-    # Measuring the baseline; becomes blocking once the code passes.
-    continue-on-error: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -80,5 +78,10 @@ jobs:
 
       - name: Run mypy
         run: |
-          echo "## mypy (default)"; mypy custom_components/swissweather || true
-          echo "## mypy (strict)"; mypy --strict custom_components/swissweather
+          mypy
+
+      # Platinum requires strict typing; reported until the code passes.
+      - name: Run mypy (strict, informational)
+        continue-on-error: true
+        run: |
+          mypy --strict

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 import logging
-from collections.abc import Callable
+from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -39,13 +41,13 @@ from .const import (
     CONF_STATION_NAME,
     CONF_WARNINGS_ENABLED,
 )
-from .coordinator import WarningAvailabilityMixin
 from .entity import (
     DEVICE_FORECAST,
     DEVICE_POLLEN_STATION,
     DEVICE_WEATHER_STATION,
     SwissPollenEntity,
     SwissWeatherEntity,
+    SwissWeatherWarningEntity,
     build_device_info,
 )
 from .meteo import CurrentWeather, Warning, WarningLevel, WarningType
@@ -65,10 +67,10 @@ WIND_DIRECTION_STATE_CLASS = getattr(
 class SwissWeatherSensorEntry:
     key: str
     translation_key: str
-    data_function: Callable[[CurrentWeather], StateType | Decimal]
-    native_unit: str
-    device_class: SensorDeviceClass
-    state_class: SensorStateClass
+    data_function: Callable[[CurrentWeather], StateType | Decimal | datetime]
+    native_unit: str | None
+    device_class: SensorDeviceClass | None
+    state_class: SensorStateClass | None
     entity_category: EntityCategory | None = None
 
 
@@ -76,7 +78,7 @@ class SwissWeatherSensorEntry:
 class SwissPollenSensorEntry:
     key: str
     translation_key: str
-    data_function: Callable[[CurrentPollen], StateType | Decimal]
+    data_function: Callable[[CurrentPollen], StateType | Decimal | datetime]
     device_class: SensorDeviceClass | None
     entity_category: EntityCategory | None = None
 
@@ -248,7 +250,7 @@ class SwissWeatherSensor(SwissWeatherEntity, SensorEntity):
         self._attr_unique_id = f"{post_code}.{sensor_entry.key}"
 
     @property
-    def native_value(self) -> StateType | Decimal:
+    def native_value(self) -> StateType | Decimal | datetime:
         if self.coordinator.data is None or self.coordinator.data.current_weather is None:
             return None
         return self._sensor_entry.data_function(self.coordinator.data.current_weather)
@@ -277,8 +279,7 @@ def get_icon_for_warning(warning: Warning | None) -> str:
 
 
 class SwissWeatherWarningCountSensor(
-    WarningAvailabilityMixin,
-    SwissWeatherEntity,
+    SwissWeatherWarningEntity,
     SensorEntity,
 ):
     """Show the number of displayable weather warnings."""
@@ -307,7 +308,7 @@ class SwissWeatherWarningCountSensor(
         return self.coordinator.data.warning_snapshot.count
 
     @property
-    def extra_state_attributes(self) -> dict[str, StateType] | None:
+    def extra_state_attributes(self) -> dict[str, Any] | None:
         if self.coordinator.data is None:
             return None
         snapshot = self.coordinator.data.warning_snapshot
@@ -319,8 +320,7 @@ class SwissWeatherWarningCountSensor(
 
 
 class SwissWeatherHighestWarningLevelSensor(
-    WarningAvailabilityMixin,
-    SwissWeatherEntity,
+    SwissWeatherWarningEntity,
     SensorEntity,
 ):
     """Show the highest weather warning level."""
@@ -348,7 +348,7 @@ class SwissWeatherHighestWarningLevelSensor(
         return self.coordinator.data.warning_snapshot.highest_level
 
     @property
-    def extra_state_attributes(self) -> dict[str, StateType] | None:
+    def extra_state_attributes(self) -> dict[str, Any] | None:
         if self.coordinator.data is None:
             return None
         highest_level = self.coordinator.data.warning_snapshot.highest_level
@@ -366,10 +366,13 @@ class SwissWeatherHighestWarningLevelSensor(
 
 
 class SwissWeatherWarningSlotSensor(
-    WarningAvailabilityMixin,
-    SwissWeatherEntity,
+    SwissWeatherWarningEntity,
     SensorEntity,
 ):
+    # Warning texts, HTML and links are long and change with every warning;
+    # keep them out of the recorder database.
+    _unrecorded_attributes = frozenset({MATCH_ALL})
+
     """Expose the prioritized primary/secondary/tertiary warnings."""
 
 
@@ -390,7 +393,6 @@ class SwissWeatherWarningSlotSensor(
             translation_key=f"{slot_label}_warning",
         )
         self._attr_unique_id = f"{post_code}.{slot_label}_warning"
-        self._entity_component_unrecorded_attributes = MATCH_ALL
 
     def _warning(self) -> Warning | None:
         if self.coordinator.data is None:
@@ -417,10 +419,10 @@ class SwissWeatherWarningSlotSensor(
         return warning.type_state
 
     @property
-    def extra_state_attributes(self) -> dict[str, StateType] | None:
+    def extra_state_attributes(self) -> dict[str, Any] | None:
         warning = self._warning()
         if warning is None:
-            attributes: dict[str, StateType] = {
+            attributes: dict[str, Any] = {
                 "rank": self._slot_index + 1,
                 "warning_type": None,
                 "warning_type_raw": None,
@@ -444,7 +446,7 @@ class SwissWeatherWarningSlotSensor(
                 )
             return attributes
 
-        attributes: dict[str, StateType] = {
+        attributes = {
             "warning_type": warning.type_name,
             "warning_type_raw": warning.raw_type,
             "warning_level": warning.effective_level,
@@ -484,8 +486,8 @@ class SwissPollenSensor(SwissPollenEntity, SensorEntity):
         coordinator: SwissPollenDataCoordinator,
     ) -> None:
         super().__init__(coordinator, device_info)
-        state_class = SensorStateClass.MEASUREMENT
-        unit = "p/m³"
+        state_class: SensorStateClass | None = SensorStateClass.MEASUREMENT
+        unit: str | None = "p/m³"
         if sensor_entry.device_class is SensorDeviceClass.TIMESTAMP:
             state_class = None
             unit = None
@@ -502,7 +504,7 @@ class SwissPollenSensor(SwissPollenEntity, SensorEntity):
         self._attr_suggested_display_precision = 0
 
     @property
-    def native_value(self) -> StateType | Decimal:
+    def native_value(self) -> StateType | Decimal | datetime:
         if self.coordinator.data is None:
             return None
         return self._sensor_entry.data_function(self.coordinator.data)
@@ -518,6 +520,8 @@ def get_color_for_pollen_level(level: PollenLevel | None) -> str:
 
 
 class SwissPollenLevelSensor(SwissPollenEntity, SensorEntity):
+    _unrecorded_attributes = frozenset({MATCH_ALL})
+
 
     def __init__(
         self,
@@ -542,20 +546,24 @@ class SwissPollenLevelSensor(SwissPollenEntity, SensorEntity):
             PollenLevel.STRONG,
             PollenLevel.VERY_STRONG,
         ]
-        self._entity_component_unrecorded_attributes = MATCH_ALL
 
     @property
     def native_value(self) -> StateType | Decimal:
         if self.coordinator.data is None:
             return None
-        value = self._sensor_entry.data_function(self.coordinator.data)
-        return get_pollen_level(value, self._sensor_entry.key)
+        return get_pollen_level(self._pollen_value(), self._sensor_entry.key)
 
-    @property
-    def extra_state_attributes(self) -> dict[str, any] | None:
-        """Return additional state attributes."""
+    def _pollen_value(self) -> float | None:
+        """Return the pollen concentration this level is derived from."""
         if self.coordinator.data is None:
             return None
         value = self._sensor_entry.data_function(self.coordinator.data)
-        level = get_pollen_level(value, self._sensor_entry.key)
+        return float(value) if isinstance(value, (int, float)) else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return additional state attributes."""
+        if self.coordinator.data is None:
+            return None
+        level = get_pollen_level(self._pollen_value(), self._sensor_entry.key)
         return {"icon_color": get_color_for_pollen_level(level)}

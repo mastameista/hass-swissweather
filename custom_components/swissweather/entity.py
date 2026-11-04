@@ -44,6 +44,24 @@ class SwissWeatherEntity(CoordinatorEntity[SwissWeatherDataCoordinator]):
         self._attr_device_info = device_info
 
 
+class SwissWeatherWarningEntity(SwissWeatherEntity):
+    """Base for warning entities.
+
+    They report unavailable while the warnings cannot be read, while weather
+    and forecast entities stay available: only the warnings part of the
+    payload failed, and a failed warning source is not an all-clear.
+    """
+
+    @property
+    def available(self) -> bool:
+        data = self.coordinator.data
+        return (
+            super().available
+            and data is not None
+            and data.warning_snapshot.available
+        )
+
+
 class SwissPollenEntity(CoordinatorEntity[SwissPollenDataCoordinator]):
     """Base for entities fed by the pollen coordinator."""
 

@@ -7,8 +7,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import SwissWeatherDataCoordinator
-from .coordinator import WarningAvailabilityMixin
-from .entity import DEVICE_FORECAST, SwissWeatherEntity, build_device_info
+from .entity import DEVICE_FORECAST, SwissWeatherWarningEntity, build_device_info
 from .const import CONF_FORECAST_NAME, CONF_POST_CODE, CONF_WARNINGS_ENABLED
 
 # Entities only read coordinator data; the coordinators batch all fetches.
@@ -43,8 +42,7 @@ async def async_setup_entry(
 
 
 class SwissWeatherHasWarningsBinarySensor(
-    WarningAvailabilityMixin,
-    SwissWeatherEntity,
+    SwissWeatherWarningEntity,
     BinarySensorEntity,
 ):
     """Expose whether the selected forecast place currently has warnings."""
@@ -69,8 +67,7 @@ class SwissWeatherHasWarningsBinarySensor(
 
 
 class SwissWeatherHasActiveWarningsBinarySensor(
-    WarningAvailabilityMixin,
-    SwissWeatherEntity,
+    SwissWeatherWarningEntity,
     BinarySensorEntity,
 ):
     """Expose whether a warning is in force right now, ignoring announced ones."""
