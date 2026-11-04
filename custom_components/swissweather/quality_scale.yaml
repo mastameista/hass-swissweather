@@ -9,9 +9,7 @@ rules:
     comment: Needs an own icon; the previous one reused the MeteoSwiss app icon.
   common-modules: done
   config-flow: done
-  config-flow-test-coverage:
-    status: todo
-    comment: config_flow.py is at 90 % and its tests drive the flow with stand-in objects.
+  config-flow-test-coverage: done
   dependency-transparency: done
   docs-actions:
     status: exempt
@@ -61,12 +59,7 @@ rules:
   reauthentication-flow:
     status: exempt
     comment: MeteoSwiss data needs no authentication.
-  test-coverage:
-    status: todo
-    comment: >-
-      84 % overall; weather.py 49 %, station_lookup.py 67 %, sensor.py 68 %,
-      naming.py 69 %. Most tests build entities from stand-in objects instead of
-      setting up the integration.
+  test-coverage: done
 
   # Gold
   devices: done
