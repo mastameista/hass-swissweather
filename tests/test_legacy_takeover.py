@@ -28,6 +28,7 @@ from homeassistant.helpers import (
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
     MockModule,
+    mock_config_flow,
     mock_integration,
     mock_platform,
 )
@@ -52,6 +53,19 @@ LEGACY_DATA = {
     CONF_STATION_NAME: "Zürich / Fluntern ZH",
     CONF_WARNINGS_ENABLED: True,
 }
+
+
+class _LegacyConfigFlow(config_entries.ConfigFlow):
+    """Stands in for the config flow of the legacy integration."""
+
+    VERSION = 2
+
+
+@pytest.fixture(autouse=True)
+def legacy_config_flow():
+    """Register a flow handler; HA sets up no entry of a domain without one."""
+    with mock_config_flow(LEGACY_DOMAIN, _LegacyConfigFlow):
+        yield
 
 
 async def _legacy_installation(hass: HomeAssistant) -> MockConfigEntry:
