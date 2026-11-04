@@ -150,3 +150,46 @@ async def test_unload_and_diagnostics(hass, meteoswiss_api, hass_client):
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
     assert entry.state is ConfigEntryState.NOT_LOADED
+
+
+@pytest.mark.parametrize("failing", ["forecast_points", "stations", "pollen_stations"])
+async def test_setup_survives_unavailable_metadata(hass, meteoswiss_api, failing):
+    """Metadata only refines names and repairs; it must not block setup."""
+    from homeassistant.helpers import issue_registry as ir
+
+    from custom_components.swissweather.forecast_points import FORECAST_POINT_LIST_URL
+    from custom_components.swissweather.pollen import POLLEN_STATIONS_URL
+    from custom_components.swissweather.station_lookup import STATION_LIST_URL
+
+    url = {
+        "forecast_points": FORECAST_POINT_LIST_URL,
+        "stations": STATION_LIST_URL,
+        "pollen_stations": POLLEN_STATIONS_URL,
+    }[failing]
+    meteoswiss_api.fail(url)
+
+    entry = await _setup(hass, FULL)
+
+    assert entry.state is ConfigEntryState.LOADED
+    # Unknown metadata is not evidence that a configured place disappeared.
+    assert not [
+        issue for (domain, _), issue in ir.async_get(hass).issues.items() if domain == DOMAIN
+    ]
+
+
+async def test_missing_station_raises_a_repair_issue(hass, meteoswiss_api):
+    from homeassistant.helpers import issue_registry as ir
+
+    entry = await _setup(hass, {**FULL, CONF_STATION_CODE: "XXX"})
+
+    assert entry.state is ConfigEntryState.LOADED
+    issues = [issue_id for (domain, issue_id) in ir.async_get(hass).issues if domain == DOMAIN]
+    assert any("station" in issue_id for issue_id in issues), issues
+
+
+async def test_legacy_entry_gets_its_forecast_point_type(hass, meteoswiss_api):
+    data = {key: value for key, value in FULL.items() if key != CONF_FORECAST_POINT_TYPE}
+
+    entry = await _setup(hass, data)
+
+    assert entry.data[CONF_FORECAST_POINT_TYPE] == "2"

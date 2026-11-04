@@ -45,15 +45,22 @@ class ForecastPoint:
 
 
 def _int_or_none(value: str | None) -> int | None:
-    if not value:
-        return None
-    return int(float(value))
+    """Parse an optional CSV number; empty or unreadable fields give None."""
+    number = _float_or_none(value)
+    return None if number is None else int(number)
 
 
 def _float_or_none(value: str | None) -> float | None:
-    if not value:
+    """Parse an optional CSV number; empty or unreadable fields give None.
+
+    One malformed row must not fail the whole forecast point list.
+    """
+    if value is None or not value.strip():
         return None
-    return float(value)
+    try:
+        return float(value)
+    except ValueError:
+        return None
 
 
 def _search_aliases(value: str | None) -> set[str]:

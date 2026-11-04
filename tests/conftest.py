@@ -32,8 +32,12 @@ if importlib.util.find_spec("pytest_homeassistant_custom_component") is not None
 
         def fail(self, url: str, status: HTTPStatus = HTTPStatus.SERVICE_UNAVAILABLE) -> None:
             """Let one endpoint answer with an HTTP error from now on."""
+            self.override(url, status=status)
+
+        def override(self, url: str, **response: Any) -> None:
+            """Let one endpoint answer differently from now on."""
             self.mock.clear_requests()
-            self._register({url: {"status": status}})
+            self._register({url: response})
 
         def _register(self, overrides: dict[str, dict[str, Any]]) -> None:
             from custom_components.swissweather.forecast_points import (

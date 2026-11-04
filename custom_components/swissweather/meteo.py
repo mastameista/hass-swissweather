@@ -300,10 +300,6 @@ class WeatherForecast:
     warnings: list[Warning] | None
 
 
-def _get_float_value(values: list[float | None], unit: str) -> list[FloatValue | None]:
-    return [(value, unit) if value is not None else None for value in values]
-
-
 def build_warning_fingerprint(
     raw_type: int | None,
     raw_level: int | None,
@@ -386,8 +382,6 @@ class MeteoClient:
     ) -> list[CurrentWeather] | None:
         logger.debug("Retrieving current weather for all stations ...")
         data = await self._async_get_csv_dictionary_for_url(CURRENT_CONDITION_URL)
-        if data is None:
-            return None
         weather = []
         for row in data:
             item = self._get_current_data_for_row(row)

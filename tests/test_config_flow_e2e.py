@@ -196,3 +196,22 @@ async def test_reconfigure_changes_the_stations(hass, meteoswiss_api):
     assert entry.data[CONF_STATION_CODE] == "TAE"
     assert entry.data[CONF_POLLEN_STATION_CODE] is None
     assert entry.data[CONF_POST_CODE] == "800100"
+
+
+async def test_unreadable_forecast_blocks_entry_creation(hass, meteoswiss_api):
+    result = await _start(hass)
+    result = await _step(hass, result["flow_id"], {QUERY: "8001"})
+    result = await _step(hass, result["flow_id"], {POINT: "800100"})
+    meteoswiss_api.override(FORECAST_URL.format("800100"), text="<html>not json</html>")
+
+    result = await _step(
+        hass,
+        result["flow_id"],
+        {
+            CONF_STATION_CODE: NO_WEATHER_STATION_OPTION,
+            CONF_POLLEN_STATION_CODE: NO_POLLEN_STATION_OPTION,
+            CONF_WARNINGS_ENABLED: True,
+        },
+    )
+
+    assert result["errors"] == {"base": "unknown"}

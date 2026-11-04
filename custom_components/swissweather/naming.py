@@ -26,6 +26,7 @@ def format_station_display_name(
                 canton_from_name,
                 include_canton=True,
             )
+        cleaned = base_name.strip()
 
     if include_canton and canton:
         canton_clean = canton.strip()
