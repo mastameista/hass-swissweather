@@ -13,13 +13,11 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceEntryType
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import SwissWeatherDataCoordinator
-from .const import CONF_FORECAST_NAME, CONF_POST_CODE, CONF_STATION_NAME, DOMAIN
+from .const import CONF_FORECAST_NAME, CONF_POST_CODE, CONF_STATION_NAME
+from .entity import DEVICE_FORECAST, SwissWeatherEntity, build_device_info
 from .meteo import (
     CurrentWeather,
     FloatValue,
@@ -44,8 +42,7 @@ async def async_setup_entry(
         ]
     )
 
-class SwissWeather(CoordinatorEntity[SwissWeatherDataCoordinator], WeatherEntity):
-    _attr_has_entity_name = True
+class SwissWeather(SwissWeatherEntity, WeatherEntity):
 
     @staticmethod
     def value_or_none(value: FloatValue | None) -> float | None:
@@ -59,11 +56,9 @@ class SwissWeather(CoordinatorEntity[SwissWeatherDataCoordinator], WeatherEntity
         forecast_name: str,
         config_entry: ConfigEntry,
     ) -> None:
-        super().__init__(coordinator)
-        self._attr_device_info = DeviceInfo(
-            entry_type=DeviceEntryType.SERVICE,
-            name=forecast_name,
-            identifiers={(DOMAIN, f"{config_entry.entry_id}-forecast")},
+        super().__init__(
+            coordinator,
+            build_device_info(config_entry.entry_id, DEVICE_FORECAST, forecast_name),
         )
         self._postCode = config_entry.data[CONF_POST_CODE]
         self._forecast_name = forecast_name

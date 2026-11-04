@@ -3,14 +3,13 @@ from __future__ import annotations
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceEntryType
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import SwissWeatherDataCoordinator
 from .coordinator import WarningAvailabilityMixin
-from .const import CONF_FORECAST_NAME, CONF_POST_CODE, CONF_WARNINGS_ENABLED, DOMAIN
+from .entity import DEVICE_FORECAST, SwissWeatherEntity, build_device_info
+from .const import CONF_FORECAST_NAME, CONF_POST_CODE, CONF_WARNINGS_ENABLED
 
 # Entities only read coordinator data; the coordinators batch all fetches.
 PARALLEL_UPDATES = 0
@@ -28,10 +27,8 @@ async def async_setup_entry(
     coordinator: SwissWeatherDataCoordinator = config_entry.runtime_data.weather_coordinator
     post_code: str = config_entry.data[CONF_POST_CODE]
     forecast_name: str = config_entry.data.get(CONF_FORECAST_NAME, post_code)
-    forecast_device = DeviceInfo(
-        entry_type=DeviceEntryType.SERVICE,
-        name=forecast_name,
-        identifiers={(DOMAIN, f"{config_entry.entry_id}-forecast")},
+    forecast_device = build_device_info(
+        config_entry.entry_id, DEVICE_FORECAST, forecast_name
     )
     async_add_entities(
         [
@@ -47,12 +44,11 @@ async def async_setup_entry(
 
 class SwissWeatherHasWarningsBinarySensor(
     WarningAvailabilityMixin,
-    CoordinatorEntity[SwissWeatherDataCoordinator],
+    SwissWeatherEntity,
     BinarySensorEntity,
 ):
     """Expose whether the selected forecast place currently has warnings."""
 
-    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -61,11 +57,9 @@ class SwissWeatherHasWarningsBinarySensor(
         device_info: DeviceInfo,
         coordinator: SwissWeatherDataCoordinator,
     ) -> None:
-        super().__init__(coordinator)
+        super().__init__(coordinator, device_info)
         self._attr_translation_key = "has_warnings"
         self._attr_unique_id = f"{post_code}.has_warnings"
-        self._attr_device_info = device_info
-        self._attr_attribution = "Source: MeteoSwiss"
 
     @property
     def is_on(self) -> bool | None:
@@ -76,12 +70,11 @@ class SwissWeatherHasWarningsBinarySensor(
 
 class SwissWeatherHasActiveWarningsBinarySensor(
     WarningAvailabilityMixin,
-    CoordinatorEntity[SwissWeatherDataCoordinator],
+    SwissWeatherEntity,
     BinarySensorEntity,
 ):
     """Expose whether a warning is in force right now, ignoring announced ones."""
 
-    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -90,11 +83,9 @@ class SwissWeatherHasActiveWarningsBinarySensor(
         device_info: DeviceInfo,
         coordinator: SwissWeatherDataCoordinator,
     ) -> None:
-        super().__init__(coordinator)
+        super().__init__(coordinator, device_info)
         self._attr_translation_key = "has_active_warnings"
         self._attr_unique_id = f"{post_code}.has_active_warnings"
-        self._attr_device_info = device_info
-        self._attr_attribution = "Source: MeteoSwiss"
 
     @property
     def is_on(self) -> bool | None:

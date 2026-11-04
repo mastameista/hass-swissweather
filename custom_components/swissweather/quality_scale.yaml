@@ -7,11 +7,7 @@ rules:
   brands:
     status: todo
     comment: Needs an own icon; the previous one reused the MeteoSwiss app icon.
-  common-modules:
-    status: todo
-    comment: >-
-      Coordinators live in coordinator.py, but the warning entities still repeat
-      their device and coordinator setup; move it into a shared entity.py base.
+  common-modules: done
   config-flow: done
   config-flow-test-coverage:
     status: todo

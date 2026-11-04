@@ -24,11 +24,9 @@ from homeassistant.const import (
     UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceEntryType
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import SwissPollenDataCoordinator, SwissWeatherDataCoordinator
 from .const import (
@@ -39,9 +37,16 @@ from .const import (
     CONF_STATION_CODE,
     CONF_STATION_NAME,
     CONF_WARNINGS_ENABLED,
-    DOMAIN,
 )
 from .coordinator import WarningAvailabilityMixin
+from .entity import (
+    DEVICE_FORECAST,
+    DEVICE_POLLEN_STATION,
+    DEVICE_WEATHER_STATION,
+    SwissPollenEntity,
+    SwissWeatherEntity,
+    build_device_info,
+)
 from .meteo import CurrentWeather, Warning, WarningLevel, WarningType
 from .pollen import CurrentPollen, PollenLevel, get_pollen_level
 
@@ -147,18 +152,14 @@ async def async_setup_entry(
         CONF_POLLEN_STATION_NAME, pollenStationCode
     )
 
-    forecast_device = DeviceInfo(
-        entry_type=DeviceEntryType.SERVICE,
-        name=forecast_name,
-        identifiers={(DOMAIN, f"{config_entry.entry_id}-forecast")},
+    forecast_device = build_device_info(
+        config_entry.entry_id, DEVICE_FORECAST, forecast_name
     )
     entities: list[SensorEntity] = []
 
     if stationCode is not None:
-        weather_device = DeviceInfo(
-            entry_type=DeviceEntryType.SERVICE,
-            name=weather_station_name,
-            identifiers={(DOMAIN, f"{config_entry.entry_id}-weather-station")},
+        weather_device = build_device_info(
+            config_entry.entry_id, DEVICE_WEATHER_STATION, weather_station_name
         )
         entities.extend(
             [
@@ -171,10 +172,8 @@ async def async_setup_entry(
 
     pollenCoordinator = runtime_data.pollen_coordinator
     if pollenStationCode is not None and pollenCoordinator is not None:
-        pollen_device = DeviceInfo(
-            entry_type=DeviceEntryType.SERVICE,
-            name=pollen_station_name,
-            identifiers={(DOMAIN, f"{config_entry.entry_id}-pollen-station")},
+        pollen_device = build_device_info(
+            config_entry.entry_id, DEVICE_POLLEN_STATION, pollen_station_name
         )
         entities += [
             SwissPollenSensor(
@@ -223,8 +222,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class SwissWeatherSensor(CoordinatorEntity[SwissWeatherDataCoordinator], SensorEntity):
-    _attr_has_entity_name = True
+class SwissWeatherSensor(SwissWeatherEntity, SensorEntity):
 
     def __init__(
         self,
@@ -234,7 +232,7 @@ class SwissWeatherSensor(CoordinatorEntity[SwissWeatherDataCoordinator], SensorE
         sensor_entry: SwissWeatherSensorEntry,
         coordinator: SwissWeatherDataCoordinator,
     ) -> None:
-        super().__init__(coordinator)
+        super().__init__(coordinator, device_info)
         self.entity_description = SensorEntityDescription(
             key=sensor_entry.key,
             translation_key=sensor_entry.translation_key,
@@ -244,8 +242,6 @@ class SwissWeatherSensor(CoordinatorEntity[SwissWeatherDataCoordinator], SensorE
         )
         self._sensor_entry = sensor_entry
         self._attr_unique_id = f"{post_code}.{sensor_entry.key}"
-        self._attr_device_info = device_info
-        self._attr_attribution = "Source: MeteoSwiss"
 
     @property
     def native_value(self) -> StateType | Decimal:
@@ -278,12 +274,11 @@ def get_icon_for_warning(warning: Warning | None) -> str:
 
 class SwissWeatherWarningCountSensor(
     WarningAvailabilityMixin,
-    CoordinatorEntity[SwissWeatherDataCoordinator],
+    SwissWeatherEntity,
     SensorEntity,
 ):
     """Show the number of displayable weather warnings."""
 
-    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -292,15 +287,13 @@ class SwissWeatherWarningCountSensor(
         device_info: DeviceInfo,
         coordinator: SwissWeatherDataCoordinator,
     ) -> None:
-        super().__init__(coordinator)
+        super().__init__(coordinator, device_info)
         self.entity_description = SensorEntityDescription(
             key="warning_count",
             translation_key="warning_count",
             state_class=SensorStateClass.MEASUREMENT,
         )
         self._attr_unique_id = f"{post_code}.warning_count"
-        self._attr_device_info = device_info
-        self._attr_attribution = "Source: MeteoSwiss"
         self._attr_suggested_display_precision = 0
 
     @property
@@ -323,12 +316,11 @@ class SwissWeatherWarningCountSensor(
 
 class SwissWeatherHighestWarningLevelSensor(
     WarningAvailabilityMixin,
-    CoordinatorEntity[SwissWeatherDataCoordinator],
+    SwissWeatherEntity,
     SensorEntity,
 ):
     """Show the highest weather warning level."""
 
-    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -337,14 +329,12 @@ class SwissWeatherHighestWarningLevelSensor(
         device_info: DeviceInfo,
         coordinator: SwissWeatherDataCoordinator,
     ) -> None:
-        super().__init__(coordinator)
+        super().__init__(coordinator, device_info)
         self.entity_description = SensorEntityDescription(
             key="highest_warning_level",
             translation_key="highest_warning_level",
         )
         self._attr_unique_id = f"{post_code}.highest_warning_level"
-        self._attr_device_info = device_info
-        self._attr_attribution = "Source: MeteoSwiss"
         self._attr_suggested_display_precision = 0
 
     @property
@@ -373,12 +363,11 @@ class SwissWeatherHighestWarningLevelSensor(
 
 class SwissWeatherWarningSlotSensor(
     WarningAvailabilityMixin,
-    CoordinatorEntity[SwissWeatherDataCoordinator],
+    SwissWeatherEntity,
     SensorEntity,
 ):
     """Expose the prioritized primary/secondary/tertiary warnings."""
 
-    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -388,7 +377,7 @@ class SwissWeatherWarningSlotSensor(
         device_info: DeviceInfo,
         coordinator: SwissWeatherDataCoordinator,
     ) -> None:
-        super().__init__(coordinator)
+        super().__init__(coordinator, device_info)
         slot_label = WARNING_SLOT_LABELS[slot_index]
         self._slot_index = slot_index
         self._slot_label = slot_label
@@ -397,8 +386,6 @@ class SwissWeatherWarningSlotSensor(
             translation_key=f"{slot_label}_warning",
         )
         self._attr_unique_id = f"{post_code}.{slot_label}_warning"
-        self._attr_device_info = device_info
-        self._attr_attribution = "Source: MeteoSwiss"
         self._entity_component_unrecorded_attributes = MATCH_ALL
 
     def _warning(self) -> Warning | None:
@@ -482,8 +469,7 @@ class SwissWeatherWarningSlotSensor(
         return get_icon_for_warning(self._warning())
 
 
-class SwissPollenSensor(CoordinatorEntity[SwissPollenDataCoordinator], SensorEntity):
-    _attr_has_entity_name = True
+class SwissPollenSensor(SwissPollenEntity, SensorEntity):
 
     def __init__(
         self,
@@ -493,7 +479,7 @@ class SwissPollenSensor(CoordinatorEntity[SwissPollenDataCoordinator], SensorEnt
         sensor_entry: SwissPollenSensorEntry,
         coordinator: SwissPollenDataCoordinator,
     ) -> None:
-        super().__init__(coordinator)
+        super().__init__(coordinator, device_info)
         state_class = SensorStateClass.MEASUREMENT
         unit = "p/m³"
         if sensor_entry.device_class is SensorDeviceClass.TIMESTAMP:
@@ -507,10 +493,8 @@ class SwissPollenSensor(CoordinatorEntity[SwissPollenDataCoordinator], SensorEnt
         )
         self._sensor_entry = sensor_entry
         self._attr_unique_id = f"pollen-{post_code}.{sensor_entry.key}"
-        self._attr_device_info = device_info
         self._attr_device_class = sensor_entry.device_class
         self._attr_suggested_display_precision = 0
-        self._attr_attribution = "Source: MeteoSwiss"
 
     @property
     def native_value(self) -> StateType | Decimal:
@@ -528,8 +512,7 @@ def get_color_for_pollen_level(level: PollenLevel | None) -> str:
     return "gray"
 
 
-class SwissPollenLevelSensor(CoordinatorEntity[SwissPollenDataCoordinator], SensorEntity):
-    _attr_has_entity_name = True
+class SwissPollenLevelSensor(SwissPollenEntity, SensorEntity):
 
     def __init__(
         self,
@@ -539,7 +522,7 @@ class SwissPollenLevelSensor(CoordinatorEntity[SwissPollenDataCoordinator], Sens
         sensor_entry: SwissPollenSensorEntry,
         coordinator: SwissPollenDataCoordinator,
     ) -> None:
-        super().__init__(coordinator)
+        super().__init__(coordinator, device_info)
         self.entity_description = SensorEntityDescription(
             key=f"{sensor_entry.key}_level",
             translation_key=f"{sensor_entry.translation_key}_level",
@@ -547,7 +530,6 @@ class SwissPollenLevelSensor(CoordinatorEntity[SwissPollenDataCoordinator], Sens
         )
         self._sensor_entry = sensor_entry
         self._attr_unique_id = f"pollen-level-{post_code}.{sensor_entry.key}"
-        self._attr_device_info = device_info
         self._attr_options = [
             PollenLevel.NONE,
             PollenLevel.LOW,
@@ -555,7 +537,6 @@ class SwissPollenLevelSensor(CoordinatorEntity[SwissPollenDataCoordinator], Sens
             PollenLevel.STRONG,
             PollenLevel.VERY_STRONG,
         ]
-        self._attr_attribution = "Source: MeteoSwiss"
         self._entity_component_unrecorded_attributes = MATCH_ALL
 
     @property

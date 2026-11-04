@@ -29,6 +29,12 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import SwissPollenDataCoordinator, SwissWeatherDataCoordinator
+from .entity import (
+    DEVICE_FORECAST,
+    DEVICE_POLLEN_STATION,
+    DEVICE_WEATHER_STATION,
+    device_identifier,
+)
 from .forecast_points import (
     ForecastPoint,
     ForecastPointMetadataLoadError,
@@ -133,7 +139,7 @@ async def _async_remove_entry_device(
     device_registry = dr.async_get(hass)
     entity_registry = er.async_get(hass)
     device = device_registry.async_get_device_by_identifier(
-        (DOMAIN, f"{entry.entry_id}-{device_suffix}"), entry.entry_id
+        device_identifier(entry.entry_id, device_suffix), entry.entry_id
     )
     if device is None:
         return
@@ -151,9 +157,9 @@ async def _async_cleanup_optional_devices(
 ) -> None:
     """Remove optional devices that are no longer configured."""
     if entry.data.get(CONF_STATION_CODE) is None:
-        await _async_remove_entry_device(hass, entry, "weather-station")
+        await _async_remove_entry_device(hass, entry, DEVICE_WEATHER_STATION)
     if entry.data.get(CONF_POLLEN_STATION_CODE) is None:
-        await _async_remove_entry_device(hass, entry, "pollen-station")
+        await _async_remove_entry_device(hass, entry, DEVICE_POLLEN_STATION)
 
 
 async def _async_cleanup_legacy_devices(
@@ -262,18 +268,18 @@ async def _async_sync_entry_device_names(
     """Keep registry device names aligned with the current config entry names."""
     device_registry = dr.async_get(hass)
     expected_names = {
-        f"{entry.entry_id}-forecast": entry.data.get(CONF_FORECAST_NAME),
-        f"{entry.entry_id}-weather-station": entry.data.get(CONF_STATION_NAME),
-        f"{entry.entry_id}-pollen-station": entry.data.get(CONF_POLLEN_STATION_NAME),
+        DEVICE_FORECAST: entry.data.get(CONF_FORECAST_NAME),
+        DEVICE_WEATHER_STATION: entry.data.get(CONF_STATION_NAME),
+        DEVICE_POLLEN_STATION: entry.data.get(CONF_POLLEN_STATION_NAME),
     }
 
     updated_count = 0
-    for identifier, expected_name in expected_names.items():
+    for kind, expected_name in expected_names.items():
         if not expected_name:
             continue
 
         device = device_registry.async_get_device_by_identifier(
-            (DOMAIN, identifier), entry.entry_id
+            device_identifier(entry.entry_id, kind), entry.entry_id
         )
         if device is None or device.name_by_user:
             continue
