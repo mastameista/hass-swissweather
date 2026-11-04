@@ -81,7 +81,7 @@ async def test_unconfigured_optional_devices_are_removed_with_their_entities(has
 async def test_optional_device_cleanup_leaves_other_entries_alone(hass):
     """Identifiers are only unique per config entry since HA 2026.8."""
     entry = _entry(hass, "entry-1", **{CONF_POST_CODE: "650000", CONF_STATION_CODE: None})
-    other = _entry(hass, "entry-2", **{CONF_POST_CODE: "862000", CONF_STATION_CODE: "PFA"})
+    other = _entry(hass, "entry-2", **{CONF_POST_CODE: "810700", CONF_STATION_CODE: "PFA"})
     # Same identifier string, owned by another entry.
     foreign = _device(hass, other, "entry-1-weather-station")
 

@@ -13,7 +13,7 @@ pytest.importorskip("homeassistant")
 from custom_components.meteoswiss_forecast_warnings.config_flow import ConfigFlow
 from custom_components.meteoswiss_forecast_warnings.station_lookup import WeatherStation
 
-NEAR = WeatherStation("Pfäffikon, ZH", "PFA", 537, 47.38, 8.79, "ZH")
+NEAR = WeatherStation("Zürich / Kloten", "KLO", 426, 47.48, 8.54, "ZH")
 FAR = WeatherStation("Lugano", "LUG", 273, 46.0, 8.96, "TI")
 # Pollen metadata can lack coordinates; the dataclass does not enforce floats.
 NO_COORDS = WeatherStation("Unbekannt", "UNK", None, None, None, "ZH")
@@ -29,13 +29,13 @@ def _flow(latitude, longitude) -> ConfigFlow:
 
 def test_station_without_coordinates_is_listed_last_without_distance():
     """Regression: a pollen station without coordinates crashed the dropdown."""
-    flow = _flow(47.33, 8.79)
+    flow = _flow(47.46, 8.44)
     flow._async_get_pollen_stations = AsyncMock(return_value=[NO_COORDS, FAR, NEAR])
 
     options = asyncio.run(flow._get_pollen_station_options())
 
     codes = [option["value"] for option in options[1:]]
-    assert codes == ["PFA", "LUG", "UNK"]
+    assert codes == ["KLO", "LUG", "UNK"]
     assert options[-1]["label"] == "Unbekannt (ZH)"
     assert options[1]["label"].endswith(" km")
 
@@ -44,4 +44,4 @@ def test_unknown_home_location_shows_no_distance():
     """Regression: an unknown HA location showed every station as "999 km away"."""
     flow = _flow(None, None)
 
-    assert flow.format_station_name_for_dropdown(NEAR) == "Pfäffikon, ZH (ZH)"
+    assert flow.format_station_name_for_dropdown(NEAR) == "Zürich / Kloten (ZH)"

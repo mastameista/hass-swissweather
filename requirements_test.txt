@@ -1,5 +1,5 @@
 # Test dependencies, pinned to the Home Assistant release the integration is
-# verified against (HA-Dev and HA-Prod run 2026.10.4). The plugin pins the
+# verified against (Home Assistant 2026.10.4). The plugin pins the
 # matching homeassistant, pytest, pytest-asyncio and pytest-cov versions.
 # Bump both together: one plugin release exists per Home Assistant release.
 pytest-homeassistant-custom-component==0.13.375

@@ -70,7 +70,7 @@ def setup(monkeypatch):
     monkeypatch.setattr(
         DataUpdateCoordinator, "async_update_listeners", lambda self: notified.append(1)
     )
-    entry = SimpleNamespace(data={CONF_POST_CODE: "8620"}, async_on_unload=lambda cb: None)
+    entry = SimpleNamespace(data={CONF_POST_CODE: "8107"}, async_on_unload=lambda cb: None)
     coordinator = SwissWeatherDataCoordinator(
         SimpleNamespace(config=SimpleNamespace(language="de")), entry
     )

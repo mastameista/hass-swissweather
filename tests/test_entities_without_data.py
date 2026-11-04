@@ -78,8 +78,8 @@ def test_unknown_warning_codes():
 
 @pytest.mark.parametrize(
     ("value", "point_type", "query"),
-    [("8620", "2", "862000"), ("862000", "2", "862000"), ("711", "3", "711"),
-     ("8620", None, "862000"), ("711", None, "711")],
+    [("8107", "2", "810700"), ("810700", "2", "810700"), ("711", "3", "711"),
+     ("8107", None, "810700"), ("711", None, "711")],
 )
 def test_forecast_query_value(value, point_type, query):
     assert MeteoClient(session=object())._build_forecast_query_value(value, point_type) == query

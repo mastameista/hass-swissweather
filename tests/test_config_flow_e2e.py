@@ -73,8 +73,8 @@ async def test_full_flow_creates_an_entry(hass, meteoswiss_api):
 
 async def test_flow_without_stations_stores_none(hass, meteoswiss_api):
     result = await _start(hass)
-    result = await _step(hass, result["flow_id"], {QUERY: "Wetzikon"})
-    result = await _step(hass, result["flow_id"], {POINT: "862000"})
+    result = await _step(hass, result["flow_id"], {QUERY: "Buchs"})
+    result = await _step(hass, result["flow_id"], {POINT: "810700"})
     result = await _step(
         hass,
         result["flow_id"],
@@ -119,7 +119,7 @@ async def test_unavailable_forecast_point_metadata(hass, meteoswiss_api):
 
 async def test_search_again_returns_to_the_search_form(hass, meteoswiss_api):
     result = await _start(hass)
-    result = await _step(hass, result["flow_id"], {QUERY: "Wetzikon"})
+    result = await _step(hass, result["flow_id"], {QUERY: "Buchs"})
 
     result = await _step(hass, result["flow_id"], {POINT: SEARCH_AGAIN_OPTION})
 

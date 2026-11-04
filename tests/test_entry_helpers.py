@@ -59,7 +59,7 @@ class FakeEntityRegistry:
 
 def test_migrate_warning_config_replaces_legacy_count():
     entry = SimpleNamespace(
-        data={CONF_POST_CODE: "8620", CONF_WEATHER_WARNINGS_NUMBER: 0},
+        data={CONF_POST_CODE: "8107", CONF_WEATHER_WARNINGS_NUMBER: 0},
         entry_id="entry-1",
     )
     hass = SimpleNamespace(config_entries=FakeConfigEntries())
@@ -69,7 +69,7 @@ def test_migrate_warning_config_replaces_legacy_count():
     assert updated_entry is entry
     hass.config_entries.async_update_entry.assert_called_once_with(
         entry,
-        data={CONF_POST_CODE: "8620", CONF_WARNINGS_ENABLED: False},
+        data={CONF_POST_CODE: "8107", CONF_WARNINGS_ENABLED: False},
     )
 
 

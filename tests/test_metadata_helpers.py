@@ -55,19 +55,19 @@ def test_point_with_unreadable_numbers_does_not_drop_the_list():
             [
                 HEADER,
                 "800100;2;;8001;Zürich;Postal code center;409.0;47.37;8.54",
-                "862000;2;;8620;Wetzikon ZH;Postal code center;n/a;;x",
+                "810700;2;;8107;Buchs ZH;Postal code center;n/a;;x",
                 "999;9;;;Unsupported type;Other;1;1;1",
             ]
         )
     )
 
-    assert [p.point_id for p in points] == ["800100", "862000"]
+    assert [p.point_id for p in points] == ["800100", "810700"]
     assert (points[1].point_height_masl, points[1].lat, points[1].lng) == (None, None, None)
 
 
 def test_point_labels():
-    assert format_forecast_point_label(_point("862000", postal="8620", name="Wetzikon ZH")) == (
-        "Wetzikon ZH [PLZ 8620]"
+    assert format_forecast_point_label(_point("810700", postal="8107", name="Buchs ZH")) == (
+        "Buchs ZH [PLZ 8107]"
     )
     assert format_forecast_point_label(_point("1", postal=None)) == "Zürich [PLZ]"
     assert format_forecast_point_label(_point("711", type_id="3", name="Säntis", height=2502)) == (

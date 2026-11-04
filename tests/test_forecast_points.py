@@ -9,7 +9,7 @@ from custom_components.meteoswiss_forecast_warnings.forecast_points import (
 def test_search_forecast_points_matches_umlaut_variants() -> None:
     points = [
         ForecastPoint("800000", "2", "8000", "Zürich", "ZIP", 408, 47.37, 8.54),
-        ForecastPoint("862000", "2", "8620", "Wetzikon ZH", "ZIP", 535, 47.32, 8.79),
+        ForecastPoint("810700", "2", "8107", "Buchs ZH", "ZIP", 535, 47.46, 8.44),
     ]
 
     assert [point.point_id for point in search_forecast_points(points, "Zürich")] == [

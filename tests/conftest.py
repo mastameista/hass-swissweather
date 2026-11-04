@@ -70,7 +70,7 @@ if importlib.util.find_spec("pytest_homeassistant_custom_component") is not None
                     "content": (FIXTURES / "vqha80_sample.csv").read_bytes()
                 },
             }
-            for point_id in ("800100", "862000"):
+            for point_id in ("800100", "810700"):
                 responses[FORECAST_URL.format(point_id)] = {"json": forecast}
             for key in POLLEN_KEYS:
                 responses[POLLEN_DATA_URL.format(key=key, language="en")] = {

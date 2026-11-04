@@ -96,7 +96,7 @@ def test_drought_warning_without_end_is_parsed_and_active():
     """Drought warnings arrive open-ended (no validTo) and carry a regionId."""
     client = MeteoClient(session=object())
 
-    # Shape taken from a live v3 response for 8620 Wetzikon (2026-11-03).
+    # Shape taken from a live v3 response (2026-11-03).
     warnings = client._get_weather_warnings(
         {
             "warnings": [
