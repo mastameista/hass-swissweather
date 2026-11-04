@@ -72,7 +72,7 @@ def get_pollen_level(value: float | None, plant_key: str) -> PollenLevel | None:
     return PollenLevel.VERY_STRONG
 
 
-def _parse_epoch_millis(value: object) -> datetime | None:
+def _parse_epoch_millis(value: str | float | None) -> datetime | None:
     """Convert a MeteoSwiss epoch-milliseconds value to an aware datetime."""
     if value is None:
         return None
@@ -84,7 +84,7 @@ def _parse_epoch_millis(value: object) -> datetime | None:
 @dataclass
 class CurrentPollen:
     stationAbbr: str
-    timestamp: datetime
+    timestamp: datetime | None
     birch: FloatValue
     grasses: FloatValue
     alder: FloatValue
@@ -94,7 +94,7 @@ class CurrentPollen:
     oak: FloatValue
 
 
-def to_float(string: str) -> float | None:
+def to_float(string: str | float | None) -> float | None:
     if string is None:
         return None
 

@@ -7,7 +7,6 @@ from enum import IntEnum
 import hashlib
 import itertools
 import logging
-from typing import NewType
 
 from aiohttp import ClientError, ClientSession
 
@@ -107,7 +106,7 @@ class MeteoSwissDataError(MeteoSwissClientError):
     """Raised when MeteoSwiss returns invalid data."""
 
 
-def to_float(string: str) -> float | None:
+def to_float(string: str | float | None) -> float | None:
     """Convert a MeteoSwiss number string to float."""
     if string is None or string == "-":
         return None
@@ -118,7 +117,7 @@ def to_float(string: str) -> float | None:
         return None
 
 
-def to_int(string: str) -> int | None:
+def to_int(string: str | float | None) -> int | None:
     """Convert a MeteoSwiss number string to int."""
     if string is None or string == "-":
         return None
@@ -129,18 +128,19 @@ def to_int(string: str) -> int | None:
         return None
 
 
-FloatValue = NewType("FloatValue", tuple[float | None, str | None])
+# A measured or forecast value with its unit; the value is None when missing.
+FloatValue = tuple[float | None, str | None]
 
 
 @dataclass
 class StationInfo:
     name: str
     abbreviation: str
-    type: str
-    altitude: float
-    lat: float
-    lng: float
-    canton: str
+    type: str | None
+    altitude: float | None
+    lat: float | None
+    lng: float | None
+    canton: str | None
 
     def __str__(self) -> str:
         return (
@@ -538,7 +538,7 @@ class MeteoClient:
                 logger.warning("Failed to parse dayDate: %s", dailyJson.get("dayDate"))
                 continue
             icon = to_int(dailyJson.get("iconDay", None))
-            condition = ICON_TO_CONDITION_MAP.get(icon)
+            condition = ICON_TO_CONDITION_MAP.get(icon) if icon is not None else None
             forecast.append(
                 Forecast(
                     timestamp,

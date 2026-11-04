@@ -31,21 +31,28 @@ class WeatherStation:
     name: str
     code: str
     altitude: int | None
-    lat: float
-    lng: float
-    canton: str
+    lat: float | None
+    lng: float | None
+    canton: str | None
 
 
-def _int_or_none(val: str) -> int | None:
-    if val is None:
+def _int_or_none(val: str | None) -> int | None:
+    """Parse an optional CSV number; empty or unreadable fields give None."""
+    number = _float_or_none(val)
+    return None if number is None else int(number)
+
+
+def _float_or_none(val: str | None) -> float | None:
+    """Parse an optional CSV number; empty or unreadable fields give None.
+
+    One malformed row must not fail the whole station list.
+    """
+    if val is None or not val.strip():
         return None
-    return int(val)
-
-
-def _float_or_none(val: str) -> float | None:
-    if val is None:
+    try:
+        return float(val)
+    except ValueError:
         return None
-    return float(val)
 
 
 async def async_load_weather_station_list(
@@ -64,10 +71,12 @@ async def async_load_weather_station_list(
             reader = csv.DictReader(lines, delimiter=";")
             stations = []
             for row in reader:
+                name = row.get("Station")
                 code = row.get("Abbr.")
                 measurements = row.get("Measurements")
                 if (
-                    code is None
+                    not name
+                    or code is None
                     or measurements is None
                     or "Temperature" not in measurements
                 ):
@@ -75,7 +84,7 @@ async def async_load_weather_station_list(
 
                 stations.append(
                     WeatherStation(
-                        row.get("Station"),
+                        name,
                         code,
                         _int_or_none(row.get("Station height m a. sea level")),
                         _float_or_none(row.get("Latitude")),

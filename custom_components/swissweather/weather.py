@@ -180,7 +180,9 @@ class SwissWeather(SwissWeatherEntity, WeatherEntity):
         forecast_data = list(filter(lambda forecast: forecast.timestamp >= now, self._current_forecast.hourlyForecast))
         return [self.meteo_forecast_to_forecast(entry, True) for entry in forecast_data]
 
-    def meteo_forecast_to_forecast(self, meteo_forecast: MeteoForecast, isHourly) -> Forecast:
+    def meteo_forecast_to_forecast(
+        self, meteo_forecast: MeteoForecast, isHourly: bool
+    ) -> Forecast:
         if isHourly:
             temperature = self.value_or_none(meteo_forecast.temperatureMean)
             wind_speed = self.value_or_none(meteo_forecast.windSpeed)
@@ -188,19 +190,27 @@ class SwissWeather(SwissWeatherEntity, WeatherEntity):
             wind_gust_speed = self.value_or_none(meteo_forecast.windGustSpeed)
             sunshine = self.value_or_none(meteo_forecast.sunshine)
         else:
-            temperature = meteo_forecast.temperatureMax[0]
+            temperature = self.value_or_none(meteo_forecast.temperatureMax)
             wind_speed = None
             wind_bearing = None
             wind_gust_speed = None
             sunshine = None
 
-        return Forecast(condition=meteo_forecast.condition,
-                datetime=meteo_forecast.timestamp.isoformat(),
-                precipitation=self.value_or_none(meteo_forecast.precipitation),
-                precipitation_probability=self.value_or_none(meteo_forecast.precipitationProbability),
-                temperature=temperature,
-                templow=self.value_or_none(meteo_forecast.temperatureMin),
-                wind_speed=wind_speed,
-                wind_gust_speed=wind_gust_speed,
-                wind_bearing=wind_bearing,
-                sunshine=sunshine)
+        probability = self.value_or_none(meteo_forecast.precipitationProbability)
+        # Values go in the native_* keys: Home Assistant converts those to the
+        # user's units and exposes them as temperature, wind_speed and so on.
+        forecast = Forecast(
+            condition=meteo_forecast.condition,
+            datetime=meteo_forecast.timestamp.isoformat(),
+            native_precipitation=self.value_or_none(meteo_forecast.precipitation),
+            precipitation_probability=None if probability is None else round(probability),
+            native_temperature=temperature,
+            native_templow=self.value_or_none(meteo_forecast.temperatureMin),
+            native_wind_speed=wind_speed,
+            native_wind_gust_speed=wind_gust_speed,
+            wind_bearing=wind_bearing,
+        )
+        # Sunshine minutes per hour are not part of Home Assistant's forecast
+        # schema; kept as an extra key because templates rely on it.
+        forecast["sunshine"] = sunshine  # type: ignore[typeddict-unknown-key]
+        return forecast
