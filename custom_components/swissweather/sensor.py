@@ -14,6 +14,7 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     DEGREE,
+    EntityCategory,
     MATCH_ALL,
     PERCENTAGE,
     UnitOfIrradiance,
@@ -68,6 +69,7 @@ class SwissWeatherSensorEntry:
     native_unit: str
     device_class: SensorDeviceClass
     state_class: SensorStateClass
+    entity_category: EntityCategory | None = None
 
 
 @dataclass
@@ -76,6 +78,7 @@ class SwissPollenSensorEntry:
     translation_key: str
     data_function: Callable[[CurrentPollen], StateType | Decimal]
     device_class: SensorDeviceClass | None
+    entity_category: EntityCategory | None = None
 
 
 def first_or_none(value):
@@ -85,7 +88,7 @@ def first_or_none(value):
 
 
 SENSORS: list[SwissWeatherSensorEntry] = [
-    SwissWeatherSensorEntry("time", "time", lambda weather: weather.date, None, SensorDeviceClass.TIMESTAMP, None),
+    SwissWeatherSensorEntry("time", "time", lambda weather: weather.date, None, SensorDeviceClass.TIMESTAMP, None, EntityCategory.DIAGNOSTIC),
     SwissWeatherSensorEntry("temperature", "temperature", lambda weather: first_or_none(weather.airTemperature), UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT),
     SwissWeatherSensorEntry("precipitation", "precipitation", lambda weather: first_or_none(weather.precipitation), UnitOfPrecipitationDepth.MILLIMETERS, SensorDeviceClass.PRECIPITATION, SensorStateClass.MEASUREMENT),
     SwissWeatherSensorEntry("sunshine", "sunshine", lambda weather: first_or_none(weather.sunshine), UnitOfTime.MINUTES, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT),
@@ -101,7 +104,7 @@ SENSORS: list[SwissWeatherSensorEntry] = [
 ]
 
 POLLEN_SENSORS: list[SwissPollenSensorEntry] = [
-    SwissPollenSensorEntry("pollen-time", "pollen_time", lambda pollen: pollen.timestamp, SensorDeviceClass.TIMESTAMP),
+    SwissPollenSensorEntry("pollen-time", "pollen_time", lambda pollen: pollen.timestamp, SensorDeviceClass.TIMESTAMP, EntityCategory.DIAGNOSTIC),
     SwissPollenSensorEntry("birch", "birch", lambda pollen: first_or_none(pollen.birch), None),
     SwissPollenSensorEntry("grasses", "grasses", lambda pollen: first_or_none(pollen.grasses), None),
     SwissPollenSensorEntry("alder", "alder", lambda pollen: first_or_none(pollen.alder), None),
@@ -239,6 +242,7 @@ class SwissWeatherSensor(SwissWeatherEntity, SensorEntity):
             native_unit_of_measurement=sensor_entry.native_unit,
             device_class=sensor_entry.device_class,
             state_class=sensor_entry.state_class,
+            entity_category=sensor_entry.entity_category,
         )
         self._sensor_entry = sensor_entry
         self._attr_unique_id = f"{post_code}.{sensor_entry.key}"
@@ -490,6 +494,7 @@ class SwissPollenSensor(SwissPollenEntity, SensorEntity):
             translation_key=sensor_entry.translation_key,
             native_unit_of_measurement=unit,
             state_class=state_class,
+            entity_category=sensor_entry.entity_category,
         )
         self._sensor_entry = sensor_entry
         self._attr_unique_id = f"pollen-{post_code}.{sensor_entry.key}"

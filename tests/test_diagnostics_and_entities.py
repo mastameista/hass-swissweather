@@ -130,3 +130,16 @@ def test_sensor_setup_skips_current_weather_sensors_without_station():
         "9475.secondary_warning",
         "9475.tertiary_warning",
     ]
+
+
+def test_only_the_update_timestamps_are_diagnostic_entities():
+    from homeassistant.const import EntityCategory
+
+    from custom_components.swissweather.sensor import POLLEN_SENSORS, SENSORS
+
+    diagnostic = [
+        entry.key
+        for entry in [*SENSORS, *POLLEN_SENSORS]
+        if entry.entity_category is EntityCategory.DIAGNOSTIC
+    ]
+    assert diagnostic == ["time", "pollen-time"]

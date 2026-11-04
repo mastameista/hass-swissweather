@@ -103,9 +103,7 @@ rules:
   dynamic-devices:
     status: exempt
     comment: Devices follow the configured places, not a changing device list.
-  entity-category:
-    status: todo
-    comment: The update timestamp sensor should be a diagnostic entity.
+  entity-category: done
   entity-device-class: done
   entity-disabled-by-default:
     status: todo
