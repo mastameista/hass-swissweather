@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import voluptuous as vol
+import probatio
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.data_entry_flow import AbortFlow
@@ -148,9 +148,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         options.append(
             SelectOptionDict(value=SEARCH_AGAIN_OPTION, label="Search again")
         )
-        schema = vol.Schema(
+        schema = probatio.Schema(
             {
-                vol.Required(CONF_FORECAST_POINT): SelectSelector(
+                probatio.Required(CONF_FORECAST_POINT): SelectSelector(
                     SelectSelectorConfig(
                         options=options,
                         mode=SelectSelectorMode.DROPDOWN,
@@ -216,9 +216,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     or reconfigure_entry.data.get(CONF_POST_CODE, "")
                 )
 
-        schema = vol.Schema(
+        schema = probatio.Schema(
             {
-                vol.Required(
+                probatio.Required(
                     CONF_FORECAST_QUERY,
                     default=(user_input or {}).get(CONF_FORECAST_QUERY, default_query),
                 ): str
@@ -265,16 +265,16 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ),
         )
 
-        schema = vol.Schema(
+        schema = probatio.Schema(
             {
-                vol.Optional(CONF_STATION_CODE, default=default_station_code): SelectSelector(
+                probatio.Optional(CONF_STATION_CODE, default=default_station_code): SelectSelector(
                     SelectSelectorConfig(
                         options=station_options,
                         mode=SelectSelectorMode.DROPDOWN,
                         translation_key="weather_station",
                     ),
                 ),
-                vol.Optional(
+                probatio.Optional(
                     CONF_POLLEN_STATION_CODE,
                     default=default_pollen_station_code,
                 ): SelectSelector(
@@ -284,7 +284,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         translation_key="pollen_station",
                     )
                 ),
-                vol.Required(
+                probatio.Required(
                     CONF_WARNINGS_ENABLED,
                     default=default_warnings_enabled,
                 ): bool,
