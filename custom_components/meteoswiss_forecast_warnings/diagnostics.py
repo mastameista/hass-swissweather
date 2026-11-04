@@ -13,6 +13,7 @@ from homeassistant.core import HomeAssistant
 
 from .const import (
     CONF_FORECAST_NAME,
+    CONF_FORECAST_POINT_ID,
     CONF_POLLEN_STATION_CODE,
     CONF_POLLEN_STATION_NAME,
     CONF_POST_CODE,
@@ -22,6 +23,7 @@ from .const import (
 
 TO_REDACT = {
     CONF_FORECAST_NAME,
+    CONF_FORECAST_POINT_ID,
     CONF_POLLEN_STATION_CODE,
     CONF_POLLEN_STATION_NAME,
     CONF_POST_CODE,

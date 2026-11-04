@@ -14,6 +14,7 @@ from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
+    CONF_FORECAST_POINT_ID,
     CONF_FORECAST_POINT_TYPE,
     CONF_POLLEN_STATION_CODE,
     CONF_POST_CODE,
@@ -139,6 +140,9 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
         self._station_code = config_entry.data.get(CONF_STATION_CODE)
         self._post_code = config_entry.data[CONF_POST_CODE]
+        self._forecast_point = config_entry.data.get(
+            CONF_FORECAST_POINT_ID, self._post_code
+        )
         self._forecast_point_type = config_entry.data.get(CONF_FORECAST_POINT_TYPE)
         self._current_station_unavailable = False
         self._client = MeteoClient(
@@ -260,16 +264,16 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
                 current_state = None
 
         try:
-            _LOGGER.debug("Loading current forecast for %s", self._post_code)
+            _LOGGER.debug("Loading current forecast for %s", self._forecast_point)
             current_forecast = await self._client.async_get_forecast(
-                self._post_code,
+                self._forecast_point,
                 self._forecast_point_type,
             )
             if current_forecast is None:
                 raise UpdateFailed(
                     translation_domain=DOMAIN,
                     translation_key="forecast_missing",
-                    translation_placeholders={"forecast_point": self._post_code},
+                    translation_placeholders={"forecast_point": self._forecast_point},
                 )
             _LOGGER.debug("Current forecast: %s", current_forecast)
             if current_state is None and current_forecast is not None:

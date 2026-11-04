@@ -19,6 +19,7 @@ from homeassistant.helpers.issue_registry import IssueSeverity
 from homeassistant.loader import async_get_custom_components
 
 from .const import (
+    CONF_FORECAST_POINT_ID,
     CONF_FORECAST_POINT_TYPE,
     CONF_FORECAST_NAME,
     CONF_IMPORTED_FROM,
@@ -43,6 +44,7 @@ from .forecast_points import (
     ForecastPoint,
     ForecastPointMetadataLoadError,
     async_load_forecast_point_list,
+    find_forecast_point_by_id,
     find_forecast_point_by_stored_value,
 )
 from .naming import (
@@ -652,6 +654,19 @@ async def _async_ensure_entry_names(
             data_updates[CONF_FORECAST_POINT_TYPE] = forecast_point.point_type_id
     if forecast_name and entry.data.get(CONF_FORECAST_NAME) != forecast_name:
         data_updates[CONF_FORECAST_NAME] = forecast_name
+    if (
+        CONF_FORECAST_POINT_ID not in entry.data
+        and post_code.isdigit()
+        and len(post_code) == 4
+    ):
+        # A 4-digit postal code usually has the point "<postal code>00", but
+        # not always: 1000 Lausanne has only 100025 to 100027, and the API
+        # answers 100000 with an error. Store the point to fetch instead.
+        forecast_point = find_forecast_point_by_id(
+            metadata.forecast_points, f"{post_code}00"
+        ) or find_forecast_point_by_stored_value(metadata.forecast_points, post_code, "2")
+        if forecast_point is not None:
+            data_updates[CONF_FORECAST_POINT_ID] = forecast_point.point_id
 
     if entry.data.get(CONF_STATION_CODE):
         station = find_station_by_code(

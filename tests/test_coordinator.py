@@ -9,7 +9,11 @@ pytest.importorskip("homeassistant")
 
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
-from custom_components.meteoswiss_forecast_warnings.const import CONF_POST_CODE, CONF_STATION_CODE
+from custom_components.meteoswiss_forecast_warnings.const import (
+    CONF_FORECAST_POINT_ID,
+    CONF_POST_CODE,
+    CONF_STATION_CODE,
+)
 from custom_components.meteoswiss_forecast_warnings.coordinator import SwissWeatherDataCoordinator
 from custom_components.meteoswiss_forecast_warnings.meteo import MeteoSwissConnectionError, MeteoSwissDataError
 from custom_components.meteoswiss_forecast_warnings.pollen import PollenDataError
@@ -57,6 +61,33 @@ def test_weather_coordinator_fails_when_forecast_missing(monkeypatch):
     with pytest.raises(UpdateFailed) as excinfo:
         asyncio.run(coordinator._async_update_data())
     assert excinfo.value.translation_key == "forecast_missing"
+
+
+def test_weather_coordinator_fetches_the_stored_forecast_point(monkeypatch):
+    from custom_components.meteoswiss_forecast_warnings import coordinator as coordinator_module
+
+    requested = []
+
+    class _FakeMeteoClient:
+        def __init__(self, session, language="en"):
+            pass
+
+        async def async_get_forecast(self, post_code, forecast_point_type):
+            requested.append(post_code)
+            return None
+
+    monkeypatch.setattr(
+        coordinator_module, "async_get_clientsession", lambda hass: object()
+    )
+    monkeypatch.setattr(coordinator_module, "MeteoClient", _FakeMeteoClient)
+    coordinator = SwissWeatherDataCoordinator(
+        FakeHass(),
+        FakeConfigEntry({CONF_POST_CODE: "1000", CONF_FORECAST_POINT_ID: "100025"}),
+    )
+
+    with pytest.raises(UpdateFailed):
+        asyncio.run(coordinator._async_update_data())
+    assert requested == ["100025"]
 
 
 def test_weather_coordinator_uses_forecast_current_as_fallback(monkeypatch):

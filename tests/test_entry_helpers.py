@@ -178,10 +178,53 @@ def test_ensure_entry_names_backfills_forecast_name_from_legacy_postal_code():
             CONF_POST_CODE: "8803",
             "forecastPointType": "2",
             "forecastName": "Zürich",
+            "forecastPointId": "880300",
             "warningsEnabled": True,
         },
         title="MeteoSwiss Zürich",
     )
+
+
+def _postal_code_entry_data(points):
+    entry = SimpleNamespace(data={CONF_POST_CODE: "1000"}, title="Weather at 1000")
+    hass = SimpleNamespace(config_entries=SimpleNamespace(async_update_entry=Mock()))
+    metadata = SwissWeatherMetadata(
+        forecast_points=points, weather_stations=[], pollen_stations=[]
+    )
+    asyncio.run(_async_ensure_entry_names(hass, entry, metadata))
+    return hass.config_entries.async_update_entry.call_args.kwargs["data"]
+
+
+def test_postal_code_without_centre_point_fetches_an_existing_point():
+    """Regression: 1000 Lausanne has no point 100000; the API answers it with 500."""
+    data = _postal_code_entry_data(
+        [
+            ForecastPoint("100026", "2", "1000", "Lausanne 26", "ZIP", 0, 0.0, 0.0),
+            ForecastPoint("100025", "2", "1000", "Lausanne 25", "ZIP", 0, 0.0, 0.0),
+        ]
+    )
+
+    assert data["forecastPointId"] == "100025"
+    assert data["forecastName"] == "Lausanne 25"
+    # The postal code stays: entity unique IDs are built from it.
+    assert data[CONF_POST_CODE] == "1000"
+
+
+def test_postal_code_prefers_its_centre_point():
+    data = _postal_code_entry_data(
+        [
+            ForecastPoint("100025", "2", "1000", "Aaa", "ZIP", 0, 0.0, 0.0),
+            ForecastPoint("100000", "2", "1000", "Zzz", "ZIP", 0, 0.0, 0.0),
+        ]
+    )
+
+    assert data["forecastPointId"] == "100000"
+
+
+def test_postal_code_without_metadata_keeps_the_default_point():
+    data = _postal_code_entry_data([])
+
+    assert "forecastPointId" not in data
 
 
 def test_ensure_entry_names_backfills_pollen_station_name_with_canton():
