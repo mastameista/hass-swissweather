@@ -7,9 +7,9 @@ from homeassistant.helpers.device_registry import DeviceEntryType
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.util import slugify
 
 from . import SwissWeatherDataCoordinator
+from .coordinator import WarningAvailabilityMixin
 from .const import CONF_FORECAST_NAME, CONF_POST_CODE, CONF_WARNINGS_ENABLED, DOMAIN
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -41,7 +41,9 @@ async def async_setup_entry(
 
 
 class SwissWeatherHasWarningsBinarySensor(
-    CoordinatorEntity[SwissWeatherDataCoordinator], BinarySensorEntity
+    WarningAvailabilityMixin,
+    CoordinatorEntity[SwissWeatherDataCoordinator],
+    BinarySensorEntity,
 ):
     """Expose whether the selected forecast place currently has warnings."""
 
@@ -57,9 +59,6 @@ class SwissWeatherHasWarningsBinarySensor(
         super().__init__(coordinator)
         self._attr_translation_key = "has_warnings"
         self._attr_unique_id = f"{post_code}.has_warnings"
-        self._attr_suggested_object_id = (
-            f"has_weather_warnings_{slugify(forecast_name)}"
-        )
         self._attr_device_info = device_info
         self._attr_attribution = "Source: MeteoSwiss"
 
@@ -75,7 +74,9 @@ class SwissWeatherHasWarningsBinarySensor(
 
 
 class SwissWeatherHasActiveWarningsBinarySensor(
-    CoordinatorEntity[SwissWeatherDataCoordinator], BinarySensorEntity
+    WarningAvailabilityMixin,
+    CoordinatorEntity[SwissWeatherDataCoordinator],
+    BinarySensorEntity,
 ):
     """Expose whether a warning is in force right now, ignoring announced ones."""
 
@@ -91,9 +92,6 @@ class SwissWeatherHasActiveWarningsBinarySensor(
         super().__init__(coordinator)
         self._attr_translation_key = "has_active_warnings"
         self._attr_unique_id = f"{post_code}.has_active_warnings"
-        self._attr_suggested_object_id = (
-            f"has_active_weather_warnings_{slugify(forecast_name)}"
-        )
         self._attr_device_info = device_info
         self._attr_attribution = "Source: MeteoSwiss"
 

@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import datetime
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import logging
 from datetime import UTC, timedelta
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
@@ -36,6 +37,10 @@ from .pollen import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# A warning still counts as active at exactly validTo, so its end is
+# evaluated a moment later.
+_WARNING_END_GRACE = timedelta(seconds=1)
+
 
 @dataclass
 class WarningSnapshot:
@@ -51,6 +56,9 @@ class WarningSnapshot:
     highest_level: int | None
     upcoming_warnings: list[Warning] = field(default_factory=list)
     next_warning_start: datetime.datetime | None = None
+    # False when the warnings could not be read; entities then report
+    # unavailable instead of "no warnings".
+    available: bool = True
 
 
 @dataclass
@@ -102,11 +110,42 @@ def build_warning_snapshot(
         count=len(sorted_warnings),
         highest_level=highest_level,
         upcoming_warnings=upcoming_warnings,
+        available=warnings is not None,
         next_warning_start=min(
             (warning.validFrom for warning in upcoming_warnings if warning.validFrom),
             default=None,
         ),
     )
+
+
+def next_warning_boundary(
+    warnings: list[Warning], now: datetime.datetime
+) -> datetime.datetime | None:
+    """Return the next moment at which a warning starts or ends, if any."""
+    boundaries = []
+    for warning in warnings:
+        if warning.validFrom is not None and warning.validFrom > now:
+            boundaries.append(warning.validFrom)
+        if warning.validTo is not None and warning.validTo >= now:
+            boundaries.append(warning.validTo + _WARNING_END_GRACE)
+    return min(boundaries, default=None)
+
+
+class WarningAvailabilityMixin:
+    """Mark warning entities unavailable while the warnings cannot be read.
+
+    Mix in before CoordinatorEntity. Weather and forecast entities stay
+    available, since only the warnings part of the payload failed.
+    """
+
+    @property
+    def available(self) -> bool:
+        data = self.coordinator.data
+        return (
+            super().available
+            and data is not None
+            and data.warning_snapshot.available
+        )
 
 
 class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
@@ -131,6 +170,59 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
             always_update=False,
             config_entry=config_entry,
         )
+        self._unsub_warning_boundary: CALLBACK_TYPE | None = None
+
+    @callback
+    def async_update_listeners(self) -> None:
+        """Notify entities, then wait for the next warning start or end."""
+        super().async_update_listeners()
+        self._schedule_warning_boundary()
+
+    async def async_shutdown(self) -> None:
+        """Cancel the warning boundary timer on unload."""
+        self._cancel_warning_boundary()
+        await super().async_shutdown()
+
+    @callback
+    def _cancel_warning_boundary(self) -> None:
+        if self._unsub_warning_boundary is not None:
+            self._unsub_warning_boundary()
+            self._unsub_warning_boundary = None
+
+    @callback
+    def _schedule_warning_boundary(self, now: datetime.datetime | None = None) -> None:
+        """Re-evaluate warnings when one starts or ends between two polls.
+
+        Polling every 10 minutes alone would switch "active" up to 10 minutes
+        late, and could miss a short warning entirely. After a boundary fires,
+        its time is passed in so the same boundary is never scheduled again.
+        """
+        self._cancel_warning_boundary()
+        if self.data is None or not self.data.warning_snapshot.available:
+            return
+        boundary = next_warning_boundary(
+            self.data.warning_snapshot.all_warnings,
+            now or datetime.datetime.now(UTC),
+        )
+        if boundary is not None:
+            self._unsub_warning_boundary = async_track_point_in_utc_time(
+                self.hass, self._handle_warning_boundary, boundary
+            )
+
+    @callback
+    def _handle_warning_boundary(self, now: datetime.datetime) -> None:
+        """Rebuild the warning snapshot for the current time, without a fetch."""
+        self._unsub_warning_boundary = None
+        if self.data is None:
+            return
+        self.data = replace(
+            self.data,
+            warning_snapshot=build_warning_snapshot(
+                self.data.warning_snapshot.all_warnings, now
+            ),
+        )
+        super().async_update_listeners()
+        self._schedule_warning_boundary(now)
 
     def _handle_current_station_failure(self, details: str | None = None) -> None:
         """Log current station outages once and degrade to forecast fallback."""

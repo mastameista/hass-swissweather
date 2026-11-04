@@ -288,6 +288,15 @@ class TestMeteoClient(unittest.IsolatedAsyncioTestCase):
         res = await self.client.async_get_current_weather_for_station("SMA")
         self.assertIsNone(res)
 
+        # A wrong header *with* data rows: the station lookup must run against
+        # rows lacking "Station/Location" and still not crash. The one-line
+        # HTML above yields no rows, so it never exercises that lookup.
+        wrong_header = "<html>;<body>\nSMA;202610040820\n"
+        self.mock_session.get.return_value = make_mock_aiohttp_response(text=wrong_header)
+
+        res = await self.client.async_get_current_weather_for_station("SMA")
+        self.assertIsNone(res)
+
     async def test_csv_row_corrupted_timestamp_skipped(self):
         """Test that rows with corrupted/invalid timestamps are skipped as datapoints."""
         # CSV with two stations: one with valid timestamp, one with corrupted date format
@@ -357,6 +366,11 @@ class TestMeteoClient(unittest.IsolatedAsyncioTestCase):
         data_corrupted_start = {"graph": {"start": "not_an_epoch"}}
         self.assertIsNone(self.client._get_hourly_forecast(data_corrupted_start))
 
+        # Numeric but beyond datetime's range: this reaches the guarded
+        # fromtimestamp() call, which the string above never does.
+        data_out_of_range_start = {"graph": {"start": 999999999999999999}}
+        self.assertIsNone(self.client._get_hourly_forecast(data_out_of_range_start))
+
     def test_hourly_forecast_null_and_empty_lists(self):
         """Test hourly forecast handles null / empty graph lists without crashing."""
         data = {
@@ -392,7 +406,11 @@ class TestMeteoClient(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(forecast.sunsets), 1)
 
     def test_weather_warnings_corrupted_entries(self):
-        """Test warning list with non-dict items, corrupted dates, and malformed links."""
+        """Non-dict items and corrupted dates are dropped; malformed links are filtered.
+
+        An unreadable validFrom rejects its warning instead of reading as "no
+        start", which would show the warning as active immediately.
+        """
         data = {
             "warnings": [
                 "not_a_dict_warning",
@@ -411,11 +429,10 @@ class TestMeteoClient(unittest.IsolatedAsyncioTestCase):
             ]
         }
         warnings = self.client._get_weather_warnings(data)
-        self.assertEqual(len(warnings), 2)
-        self.assertEqual(warnings[0].validFrom, None)
-        self.assertEqual(warnings[0].links, [])
+        self.assertEqual(len(warnings), 1)
+        self.assertEqual(warnings[0].raw_type, 2)
         self.assertEqual(
-            warnings[1].links,
+            warnings[0].links,
             [WarningLink(url="https://example.com", text="Valid Link", alt_url=None)],
         )
 

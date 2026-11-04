@@ -32,6 +32,7 @@ from custom_components.swissweather.coordinator import (
     build_warning_snapshot,
 )
 from custom_components.swissweather.sensor import (
+    SwissWeatherHighestWarningLevelSensor,
     SwissWeatherWarningCountSensor,
     SwissWeatherWarningSlotSensor,
 )
@@ -227,3 +228,41 @@ def test_legacy_cleanup_keeps_current_entities_matching_legacy_patterns(monkeypa
         "sensor.wetzikon_weather_warning_1",
         "sensor.wetzikon_zh_weather_warnings",
     ]
+
+
+def test_unreadable_warnings_make_the_snapshot_unavailable():
+    snapshot = build_warning_snapshot(None, now=NOW)
+
+    assert snapshot.available is False
+    assert snapshot.count == 0
+    assert build_warning_snapshot([], now=NOW).available is True
+
+
+def _unreadable_warnings_coordinator():
+    coordinator = _coordinator(None)
+    coordinator.last_update_success = True
+    return coordinator
+
+
+def test_warning_entities_are_unavailable_when_warnings_are_unreadable():
+    """A failed warning source is not an all-clear."""
+    coordinator = _unreadable_warnings_coordinator()
+    entities = [
+        SwissWeatherHasWarningsBinarySensor("8620", "Wetzikon ZH", DEVICE, coordinator),
+        SwissWeatherHasActiveWarningsBinarySensor("8620", "Wetzikon ZH", DEVICE, coordinator),
+        SwissWeatherWarningCountSensor("8620", "Wetzikon ZH", DEVICE, coordinator),
+        SwissWeatherHighestWarningLevelSensor("8620", "Wetzikon ZH", DEVICE, coordinator),
+        SwissWeatherWarningSlotSensor("8620", "Wetzikon ZH", 0, DEVICE, coordinator),
+    ]
+
+    assert [entity.available for entity in entities] == [False] * 5
+
+
+def test_warning_entities_stay_available_with_no_warnings():
+    coordinator = _coordinator([])
+    coordinator.last_update_success = True
+
+    entity = SwissWeatherHasWarningsBinarySensor("8620", "Wetzikon ZH", DEVICE, coordinator)
+
+    assert entity.available is True
+    assert entity.is_on is False

@@ -59,9 +59,6 @@ SEARCH_AGAIN_OPTION = "__search_again__"
 NO_POLLEN_STATION_OPTION = "__no_pollen_station__"
 NO_WEATHER_STATION_OPTION = "__no_weather_station__"
 MAX_FORECAST_POINT_RESULTS = 50
-# Sort key for stations without usable coordinates: farther than any
-# distance inside Switzerland, so such stations end up last.
-_UNKNOWN_DISTANCE_KM = 999_000.0
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -371,7 +368,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Load weather station options for the dropdown."""
         stations = await self._async_get_weather_stations()
         if self.hass.config.latitude is not None and self.hass.config.longitude is not None:
-            stations = sorted(stations, key=lambda item: self._get_distance_to_station(item))
+            stations = sorted(stations, key=self._station_sort_key)
         return [
             SelectOptionDict(
                 value=NO_WEATHER_STATION_OPTION,
@@ -387,9 +384,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Load pollen station options for the dropdown."""
         pollen_stations = await self._async_get_pollen_stations()
         if self.hass.config.latitude is not None and self.hass.config.longitude is not None:
-            pollen_stations = sorted(
-                pollen_stations, key=lambda item: self._get_distance_to_station(item)
-            )
+            pollen_stations = sorted(pollen_stations, key=self._station_sort_key)
         return [
             SelectOptionDict(
                 value=NO_POLLEN_STATION_OPTION,
@@ -401,19 +396,22 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ],
         ]
 
-    def _get_distance_to_station(self, station: WeatherStation) -> float:
-        """Return the distance in km from the HA home location to a station.
+    def _get_distance_to_station(self, station: WeatherStation) -> float | None:
+        """Return the distance in metres from the HA home location, or None.
 
-        Unknown distances sort last instead of breaking the sort with a None key.
+        None means unknown: either the home location or the station's
+        coordinates are missing (pollen metadata can lack them).
         """
         h_lat = self.hass.config.latitude
         h_lng = self.hass.config.longitude
-        if h_lat is None or h_lng is None:
-            return _UNKNOWN_DISTANCE_KM
-        d = distance(h_lat, h_lng, station.lat, station.lng)
-        if d is None:
-            return _UNKNOWN_DISTANCE_KM
-        return d
+        if None in (h_lat, h_lng, station.lat, station.lng):
+            return None
+        return distance(h_lat, h_lng, station.lat, station.lng)
+
+    def _station_sort_key(self, station: WeatherStation) -> tuple[bool, float]:
+        """Sort by distance, stations with an unknown distance last."""
+        station_distance = self._get_distance_to_station(station)
+        return (station_distance is None, station_distance or 0.0)
 
     async def _async_get_forecast_points(self) -> list[Any]:
         """Load forecast-point metadata once per flow instance."""

@@ -329,6 +329,25 @@ def build_warning_fingerprint(
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()
 
 
+def _parse_warning_time(value) -> datetime | None:
+    """Convert a warning bound (epoch milliseconds) to an aware datetime.
+
+    A missing bound is legitimate and returns None: drought warnings, for
+    example, have no validTo. A bound that is present but unreadable raises
+    ValueError, because treating it as missing would make the warning start
+    immediately or never end.
+    """
+    if value is None:
+        return None
+    epoch = to_int(value)
+    if epoch is None:
+        raise ValueError(f"Unreadable warning timestamp: {value!r}")
+    try:
+        return datetime.fromtimestamp(epoch / 1000, UTC)
+    except (OverflowError, OSError, ValueError) as err:
+        raise ValueError(f"Warning timestamp out of range: {value!r}") from err
+
+
 def parse_warning_type(value: int | None) -> WarningType:
     """Map the raw MeteoSwiss warning type to a supported enum."""
     if value is None:
@@ -433,12 +452,14 @@ class MeteoClient:
         try:
             warnings = self._get_weather_warnings(forecastJson)
         except MeteoSwissDataError as err:
+            # Keep the forecast, but report warnings as unknown rather than as
+            # an empty list: a failed warning source is not an all-clear.
             logger.warning(
-                "Failed to parse MeteoSwiss warnings for %s; continuing without warnings: %s",
+                "Failed to parse MeteoSwiss warnings for %s; warnings unavailable: %s",
                 postCode,
                 err,
             )
-            warnings = []
+            warnings = None
 
         sunrises = None
         sunriseJson = forecastJson.get("graph", {}).get("sunrise", None)
@@ -563,31 +584,33 @@ class MeteoClient:
             (value, "min/h") for value in (graphJson.get("sunshine1h") or [])
         ]
 
-        precipitationList = []
-        precipitation10mList = graphJson.get("precipitation10m")
-        precipitation1hList = graphJson.get("precipitation1h")
-        if precipitation1hList and precipitation10mList:
-            # The hourly series starts where the 10-minute series ends, so the
-            # 10-minute values are averaged into hourly buckets and prepended.
-            # Work on a copy so the parsed payload is not mutated.
-            precip10m = list(precipitation10mList)
-            # The 10-minute list is usually one value short of a full bucket;
+        # The 10-minute series covers the first hours, the hourly series the
+        # rest. Precipitation is optional per hour: when a series is missing or
+        # empty, the hours it would cover get no value instead of the whole
+        # hourly forecast being dropped.
+        precipitation10mList = graphJson.get("precipitation10m") or []
+        precipitation1hList = graphJson.get("precipitation1h") or []
+        leadingHours = max(len(temperatureMeanList) - len(precipitation1hList), 0)
+        leadingValues: list[float | None] = []
+        if precipitation10mList and precipitation1hList:
+            # Work on a copy so the parsed payload is not mutated. The
+            # 10-minute list is usually one value short of a full bucket;
             # borrow the first hourly value to complete it.
+            precip10m = list(precipitation10mList)
             precip10m.append(precipitation1hList[0])
-            precipitationList = [
+            leadingValues = [
                 sum(precip10m[i : i + 6]) / 6.0 for i in range(0, len(precip10m), 6)
             ]
-            # Trim so the merged series lines up with the other hourly lists.
-            lenDiff = len(temperatureMeanList) - len(precipitation1hList)
-            logger.debug(
-                "Need to leave %d 10min datapoints out of %d (%d pre merge)",
-                lenDiff,
-                len(precipitationList),
-                len(precip10m),
-            )
-            del precipitationList[lenDiff:]
-            precipitationList += precipitation1hList
-            precipitationList = [(value, "mm/h") for value in precipitationList]
+        leadingValues = (leadingValues + [None] * leadingHours)[:leadingHours]
+        logger.debug(
+            "Hourly precipitation: %d leading hours from 10min data, %d hourly values",
+            leadingHours,
+            len(precipitation1hList),
+        )
+        precipitationList = [
+            None if value is None else (value, "mm/h")
+            for value in leadingValues + list(precipitation1hList)
+        ]
 
         # Icons, wind direction and precipitation probability arrive in 3-hour
         # steps; repeat each value three times to align with the hourly series.
@@ -666,9 +689,13 @@ class MeteoClient:
         return forecast
 
     def _get_weather_warnings(self, forecastJson) -> list[Warning]:
-        warningsJson = forecastJson.get("warnings", None)
-        if warningsJson is None or not isinstance(warningsJson, list):
+        warningsJson = forecastJson.get("warnings")
+        if warningsJson is None:
             return []
+        if not isinstance(warningsJson, list):
+            raise MeteoSwissDataError(
+                f"Unexpected MeteoSwiss warnings block: {type(warningsJson).__name__}"
+            )
 
         warnings: list[Warning] = []
         parse_errors = 0
@@ -681,20 +708,8 @@ class MeteoClient:
             try:
                 raw_type = to_int(warningJson.get("warnType"))
                 raw_level = to_int(warningJson.get("warnLevel"))
-                validFrom = None
-                validTo = None
-                validFromEpoch = to_int(warningJson.get("validFrom"))
-                validToEpoch = to_int(warningJson.get("validTo"))
-                if validFromEpoch is not None:
-                    try:
-                        validFrom = datetime.fromtimestamp(validFromEpoch / 1000, UTC)
-                    except (ValueError, TypeError, OSError):
-                        pass
-                if validToEpoch is not None:
-                    try:
-                        validTo = datetime.fromtimestamp(validToEpoch / 1000, UTC)
-                    except (ValueError, TypeError, OSError):
-                        pass
+                validFrom = _parse_warning_time(warningJson.get("validFrom"))
+                validTo = _parse_warning_time(warningJson.get("validTo"))
 
                 links = [
                     WarningLink(
