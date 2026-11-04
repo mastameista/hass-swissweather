@@ -37,7 +37,7 @@ def test_station_without_coordinates_is_listed_last_without_distance():
     codes = [option["value"] for option in options[1:]]
     assert codes == ["PFA", "LUG", "UNK"]
     assert options[-1]["label"] == "Unbekannt (ZH)"
-    assert options[1]["label"].endswith("km away")
+    assert options[1]["label"].endswith(" km")
 
 
 def test_unknown_home_location_shows_no_distance():

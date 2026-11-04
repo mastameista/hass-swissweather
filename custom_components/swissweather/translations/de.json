@@ -209,5 +209,22 @@
     "update_failed": {
       "message": "Die Aktualisierung der MeteoSchweiz-Daten ist fehlgeschlagen: {error}"
     }
+  },
+  "selector": {
+    "forecast_point": {
+      "options": {
+        "__search_again__": "Neu suchen"
+      }
+    },
+    "weather_station": {
+      "options": {
+        "__no_weather_station__": "Keine Wetterstation"
+      }
+    },
+    "pollen_station": {
+      "options": {
+        "__no_pollen_station__": "Keine Pollenstation"
+      }
+    }
   }
 }

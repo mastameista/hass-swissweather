@@ -209,5 +209,22 @@
     "update_failed": {
       "message": "Updating MeteoSwiss data failed: {error}"
     }
+  },
+  "selector": {
+    "forecast_point": {
+      "options": {
+        "__search_again__": "Search again"
+      }
+    },
+    "weather_station": {
+      "options": {
+        "__no_weather_station__": "No weather station"
+      }
+    },
+    "pollen_station": {
+      "options": {
+        "__no_pollen_station__": "No pollen station"
+      }
+    }
   }
 }

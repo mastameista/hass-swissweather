@@ -49,3 +49,15 @@ def test_every_icon_belongs_to_a_translated_entity():
     entities = _load("strings.json")["entity"]
     for platform, keys in icons.items():
         assert set(keys) <= set(entities[platform]), (platform, set(keys) - set(entities[platform]))
+
+
+def test_every_config_flow_selector_is_translated():
+    """The fixed dropdown entries (no station, search again) need a translation."""
+    source = (COMPONENT / "config_flow.py").read_text(encoding="utf-8")
+    selectors = _load("strings.json")["selector"]
+    used = set(re.findall(r'translation_key="(\w+)"', source))
+    assert used == set(selectors), (used, set(selectors))
+
+    fixed_values = set(re.findall(r'^[A-Z_]+_OPTION = "(\w+)"', source, re.M))
+    translated = {value for sel in selectors.values() for value in sel["options"]}
+    assert fixed_values == translated, (fixed_values, translated)

@@ -154,6 +154,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     SelectSelectorConfig(
                         options=options,
                         mode=SelectSelectorMode.DROPDOWN,
+                        translation_key="forecast_point",
                     )
                 )
             }
@@ -270,6 +271,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     SelectSelectorConfig(
                         options=station_options,
                         mode=SelectSelectorMode.DROPDOWN,
+                        translation_key="weather_station",
                     ),
                 ),
                 vol.Optional(
@@ -279,6 +281,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     SelectSelectorConfig(
                         options=pollen_station_options,
                         mode=SelectSelectorMode.DROPDOWN,
+                        translation_key="pollen_station",
                     )
                 ),
                 vol.Required(
@@ -362,7 +365,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         station_distance = self._get_distance_to_station(station)
         if station_distance is None:
             return f"{station.name} ({station.canton})"
-        return f"{station.name} ({station.canton}) - {station_distance / 1000:.0f} km away"
+        return f"{station.name} ({station.canton}) · {station_distance / 1000:.0f} km"
 
     async def _get_weather_station_options(self) -> list[SelectOptionDict]:
         """Load weather station options for the dropdown."""
