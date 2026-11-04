@@ -29,6 +29,7 @@ from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
     MockModule,
     mock_integration,
+    mock_platform,
 )
 
 from custom_components.meteoswiss_forecast_warnings.const import (
@@ -63,6 +64,7 @@ async def _legacy_installation(hass: HomeAssistant) -> MockConfigEntry:
             async_unload_entry=AsyncMock(return_value=True),
         ),
     )
+    mock_platform(hass, f"{LEGACY_DOMAIN}.config_flow", None)
     legacy = MockConfigEntry(
         domain=LEGACY_DOMAIN,
         entry_id="legacy-1",
