@@ -113,6 +113,11 @@ async def test_takeover_keeps_entity_ids_devices_areas_and_names(hass, meteoswis
     forecast_id = device_registry.async_get_device_by_identifier(
         (LEGACY_DOMAIN, "legacy-1-forecast"), legacy.entry_id
     ).id
+    registry_ids = {
+        entity.entity_id: entity.id
+        for entity in er.async_entries_for_config_entry(er.async_get(hass), legacy.entry_id)
+    }
+    assert len(registry_ids) == 3
 
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
@@ -137,15 +142,13 @@ async def test_takeover_keeps_entity_ids_devices_areas_and_names(hass, meteoswis
     assert entry.unique_id == "swissweather_800100"
     assert CONF_IMPORTED_FROM not in entry.data
 
-    # Entities keep their entity IDs and now belong to the new domain.
+    # The registry entries were moved, not removed and created again: a
+    # recreated entry gets a new ID and loses customisations and history links.
     entity_registry = er.async_get(hass)
-    for entity_id in (
-        "weather.zurich",
-        "binary_sensor.zurich_has_weather_warnings",
-        "sensor.zurich_fluntern_temperature",
-    ):
+    for entity_id, registry_id in registry_ids.items():
         registry_entry = entity_registry.async_get(entity_id)
         assert registry_entry is not None, entity_id
+        assert registry_entry.id == registry_id, entity_id
         assert registry_entry.platform == DOMAIN
         assert registry_entry.config_entry_id == entry.entry_id
         assert hass.states.get(entity_id) is not None, entity_id

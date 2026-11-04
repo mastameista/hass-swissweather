@@ -88,17 +88,24 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Handle the initial forecast search step."""
         if user_input is None:
-            if legacy_entries := self._legacy_entries_to_take_over():
-                return self.async_show_menu(
-                    step_id="legacy",
-                    menu_options=["take_over_legacy", "search"],
-                    description_placeholders={
-                        "entries": ", ".join(entry.title for entry in legacy_entries)
-                    },
-                )
+            if self._legacy_entries_to_take_over():
+                return await self.async_step_legacy()
             return await self._show_forecast_search_form("user")
 
         return await self._handle_forecast_search("user", user_input)
+
+    async def async_step_legacy(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Offer to take over legacy swissweather entries."""
+        legacy_entries = self._legacy_entries_to_take_over()
+        return self.async_show_menu(
+            step_id="legacy",
+            menu_options=["take_over_legacy", "search"],
+            description_placeholders={
+                "entries": ", ".join(entry.title for entry in legacy_entries)
+            },
+        )
 
     async def async_step_search(
         self, user_input: dict[str, Any] | None = None

@@ -514,6 +514,13 @@ async def _async_take_over_legacy_entry(
             # Home Assistant only moves entities that are not loaded.
             await hass.config_entries.async_unload(legacy_entry_id)
 
+        # Entities first: moving a device to another config entry removes the
+        # entities that still belong to the entry it leaves.
+        entity_registry = er.async_get(hass)
+        for entity in er.async_entries_for_config_entry(entity_registry, legacy_entry_id):
+            entity_registry.async_update_entity_platform(
+                entity.entity_id, DOMAIN, new_config_entry_id=entry.entry_id
+            )
         device_registry = dr.async_get(hass)
         for device in dr.async_entries_for_config_entry(device_registry, legacy_entry_id):
             device_registry.async_update_device(
@@ -523,11 +530,6 @@ async def _async_take_over_legacy_entry(
                     _take_over_identifier(identifier, legacy_entry_id, entry.entry_id)
                     for identifier in device.identifiers
                 },
-            )
-        entity_registry = er.async_get(hass)
-        for entity in er.async_entries_for_config_entry(entity_registry, legacy_entry_id):
-            entity_registry.async_update_entity_platform(
-                entity.entity_id, DOMAIN, new_config_entry_id=entry.entry_id
             )
         await hass.config_entries.async_remove(legacy_entry_id)
         _LOGGER.info(
