@@ -2,6 +2,9 @@
     "name": "Swiss Weather",
     "content_in_root": false,
     "render_readme": true,
-    "country": ["CH"],
-    "hide_default_branch": false
+    "country": [
+        "CH"
+    ],
+    "hide_default_branch": false,
+    "homeassistant": "2026.8.0"
 }

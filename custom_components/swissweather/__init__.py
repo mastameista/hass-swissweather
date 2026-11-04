@@ -132,9 +132,8 @@ async def _async_remove_entry_device(
     """Remove an entry-owned device and all of its entities from the registries."""
     device_registry = dr.async_get(hass)
     entity_registry = er.async_get(hass)
-    device = device_registry.async_get_device(
-        identifiers={(DOMAIN, f"{entry.entry_id}-{device_suffix}")},
-        connections=set(),
+    device = device_registry.async_get_device_by_identifier(
+        (DOMAIN, f"{entry.entry_id}-{device_suffix}"), entry.entry_id
     )
     if device is None:
         return
@@ -174,34 +173,16 @@ async def _async_cleanup_legacy_devices(
     entity_registry = er.async_get(hass)
     removed_count = 0
 
-    devices_by_identifier: dict[str, object] = {}
-    for device in getattr(device_registry, "devices", {}).values():
-        for identifier in getattr(device, "identifiers", set()) or set():
-            if not identifier or identifier[0] != DOMAIN:
-                continue
-            devices_by_identifier[str(identifier[1])] = device
-
-    for legacy_identifier in legacy_identifiers:
-        device = devices_by_identifier.get(legacy_identifier)
-        if device is None:
-            device = device_registry.async_get_device(
-                identifiers={(DOMAIN, legacy_identifier)},
-                connections=set(),
-            )
-        if device is None:
-            continue
-
-        if not getattr(device, "config_entries", None):
-            device_registry.async_remove_device(device.id)
-            removed_count += 1
-            continue
-
-        device_entities = er.async_entries_for_device(
+    # A device belongs to exactly one config entry, so only this entry's legacy
+    # devices are looked at; another entry may reuse the same identifier.
+    for device in device_registry.async_get_devices(
+        identifiers={(DOMAIN, identifier) for identifier in legacy_identifiers},
+        config_entry_id=entry.entry_id,
+    ):
+        if er.async_entries_for_device(
             entity_registry, device.id, include_disabled_entities=True
-        )
-        if device_entities:
+        ):
             continue
-
         device_registry.async_remove_device(device.id)
         removed_count += 1
 
@@ -291,11 +272,10 @@ async def _async_sync_entry_device_names(
         if not expected_name:
             continue
 
-        device = device_registry.async_get_device(
-            identifiers={(DOMAIN, identifier)},
-            connections=set(),
+        device = device_registry.async_get_device_by_identifier(
+            (DOMAIN, identifier), entry.entry_id
         )
-        if device is None or getattr(device, "name_by_user", None):
+        if device is None or device.name_by_user:
             continue
         if device.name == expected_name:
             continue

@@ -11,12 +11,9 @@ pytest.importorskip("homeassistant")
 from custom_components.swissweather.__init__ import (
     SwissWeatherMetadata,
     _async_cleanup_disabled_warning_entities,
-    _async_cleanup_legacy_devices,
-    _async_cleanup_optional_devices,
     _async_ensure_entry_names,
     _async_ensure_entry_unique_id,
     _async_migrate_warning_config,
-    _async_sync_entry_device_names,
     _async_sync_repairs_issues,
     async_migrate_entry,
     async_remove_config_entry_device,
@@ -57,37 +54,7 @@ class FakeEntityRegistry:
         self.removed.append(entity_id)
 
 
-class FakeDeviceRegistry:
-    def __init__(self, devices: dict[str, SimpleNamespace]) -> None:
-        self._devices = devices
-        self.devices = {
-            device.id: SimpleNamespace(
-                id=device.id,
-                identifiers={(DOMAIN, identifier)},
-                config_entries=getattr(device, "config_entries", []),
-                name=getattr(device, "name", None),
-                name_by_user=getattr(device, "name_by_user", None),
-            )
-            for identifier, device in devices.items()
-        }
-        self.removed: list[str] = []
-        self.updated: list[tuple[str, str]] = []
 
-    def async_get_device(self, *, identifiers, connections):
-        del connections
-        identifier = next(iter(identifiers))[1]
-        device = self._devices.get(identifier)
-        if device is None:
-            return None
-        return self.devices[device.id]
-
-    def async_remove_device(self, device_id: str) -> None:
-        self.removed.append(device_id)
-
-    def async_update_device(self, device_id: str, **kwargs) -> None:
-        if "name" in kwargs:
-            self.devices[device_id].name = kwargs["name"]
-            self.updated.append((device_id, kwargs["name"]))
 
 
 def test_migrate_warning_config_replaces_legacy_count():
@@ -282,135 +249,6 @@ def test_ensure_entry_names_refreshes_existing_station_and_pollen_names():
         },
         title="MeteoSwiss 7320 / Glarus GL / Davos / Wolfgang GR",
     )
-
-
-def test_cleanup_legacy_devices_removes_empty_upstream_device(monkeypatch):
-    from custom_components.swissweather import __init__ as init_module
-
-    device_registry = FakeDeviceRegistry(
-        {
-            "swissweather-8803-KLO": SimpleNamespace(id="legacy-device"),
-        }
-    )
-    entity_registry = FakeEntityRegistry([])
-
-    monkeypatch.setattr(init_module.dr, "async_get", lambda hass: device_registry)
-    monkeypatch.setattr(init_module.er, "async_get", lambda hass: entity_registry)
-    monkeypatch.setattr(
-        init_module.er,
-        "async_entries_for_device",
-        lambda registry, device_id, include_disabled_entities=True: [],
-    )
-
-    entry = SimpleNamespace(
-        data={CONF_POST_CODE: "8803", "stationCode": "KLO"},
-        entry_id="entry-legacy",
-    )
-
-    asyncio.run(_async_cleanup_legacy_devices(SimpleNamespace(), entry))
-
-    assert device_registry.removed == ["legacy-device"]
-
-
-def test_cleanup_legacy_devices_removes_active_legacy_device_without_entities(
-    monkeypatch,
-):
-    from custom_components.swissweather import __init__ as init_module
-
-    device_registry = FakeDeviceRegistry(
-        {
-            "swissweather-7320-GLA": SimpleNamespace(
-                id="legacy-active-device",
-                config_entries=["entry-legacy"],
-            ),
-        }
-    )
-    entity_registry = FakeEntityRegistry([])
-
-    monkeypatch.setattr(init_module.dr, "async_get", lambda hass: device_registry)
-    monkeypatch.setattr(init_module.er, "async_get", lambda hass: entity_registry)
-    monkeypatch.setattr(
-        init_module.er,
-        "async_entries_for_device",
-        lambda registry, device_id, include_disabled_entities=True: [],
-    )
-
-    entry = SimpleNamespace(
-        data={CONF_POST_CODE: "7320", "stationCode": "GLA"},
-        entry_id="entry-legacy",
-    )
-
-    asyncio.run(_async_cleanup_legacy_devices(SimpleNamespace(), entry))
-
-    assert device_registry.removed == ["legacy-active-device"]
-
-
-def test_cleanup_optional_devices_removes_unconfigured_weather_and_pollen_devices(
-    monkeypatch,
-):
-    from custom_components.swissweather import __init__ as init_module
-
-    device_registry = FakeDeviceRegistry(
-        {
-            "entry-1-weather-station": SimpleNamespace(id="weather-device"),
-            "entry-1-pollen-station": SimpleNamespace(id="pollen-device"),
-            "entry-1-forecast": SimpleNamespace(id="forecast-device"),
-        }
-    )
-    entity_registry = FakeEntityRegistry(
-        [
-            SimpleNamespace(entity_id="sensor.weather_temperature"),
-            SimpleNamespace(entity_id="sensor.pollen_birch"),
-        ]
-    )
-
-    monkeypatch.setattr(init_module.dr, "async_get", lambda hass: device_registry)
-    monkeypatch.setattr(init_module.er, "async_get", lambda hass: entity_registry)
-    monkeypatch.setattr(
-        init_module.er,
-        "async_entries_for_device",
-        lambda registry, device_id, include_disabled_entities=True: [
-            SimpleNamespace(entity_id="sensor.weather_temperature")
-        ]
-        if device_id == "weather-device"
-        else [SimpleNamespace(entity_id="sensor.pollen_birch")]
-        if device_id == "pollen-device"
-        else [],
-    )
-
-    entry = SimpleNamespace(
-        entry_id="entry-1",
-        data={CONF_POST_CODE: "650000", CONF_STATION_CODE: None, CONF_POLLEN_STATION_CODE: None},
-    )
-
-    asyncio.run(_async_cleanup_optional_devices(SimpleNamespace(), entry))
-
-    assert device_registry.removed == ["weather-device", "pollen-device"]
-    assert entity_registry.removed == ["sensor.weather_temperature", "sensor.pollen_birch"]
-
-
-def test_sync_entry_device_names_updates_existing_pollen_device(monkeypatch):
-    from custom_components.swissweather import __init__ as init_module
-
-    device_registry = FakeDeviceRegistry(
-        {
-            "entry-1-pollen-station": SimpleNamespace(
-                id="pollen-device",
-                name="Davos / Wolfgang",
-            ),
-        }
-    )
-
-    monkeypatch.setattr(init_module.dr, "async_get", lambda hass: device_registry)
-
-    entry = SimpleNamespace(
-        entry_id="entry-1",
-        data={CONF_POLLEN_STATION_NAME: "Davos / Wolfgang GR"},
-    )
-
-    asyncio.run(_async_sync_entry_device_names(SimpleNamespace(), entry))
-
-    assert device_registry.updated == [("pollen-device", "Davos / Wolfgang GR")]
 
 
 @pytest.mark.parametrize(
