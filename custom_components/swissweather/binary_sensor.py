@@ -6,7 +6,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import SwissWeatherDataCoordinator
+from .coordinator import SwissWeatherDataCoordinator
 from .entity import DEVICE_FORECAST, SwissWeatherWarningEntity, build_device_info
 from .const import CONF_FORECAST_NAME, CONF_POST_CODE, CONF_WARNINGS_ENABLED
 

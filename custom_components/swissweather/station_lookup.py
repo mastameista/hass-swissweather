@@ -6,7 +6,7 @@ import csv
 from dataclasses import dataclass
 import logging
 
-from aiohttp import ClientError, ClientSession
+from aiohttp import ClientError, ClientResponse, ClientSession
 
 from .pollen import PollenClient, PollenClientError
 from .request import REQUEST_TIMEOUT, async_get_with_retry
@@ -65,7 +65,7 @@ async def async_load_weather_station_list(
     _LOGGER.info("Requesting station list data...")
     try:
 
-        async def _parse_csv(response) -> list[WeatherStation]:
+        async def _parse_csv(response: ClientResponse) -> list[WeatherStation]:
             text = await response.text(encoding=encoding)
             lines = text.splitlines()
             reader = csv.DictReader(lines, delimiter=";")

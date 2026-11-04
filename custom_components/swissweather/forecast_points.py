@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import logging
 import unicodedata
 
-from aiohttp import ClientError, ClientSession
+from aiohttp import ClientError, ClientResponse, ClientSession
 
 from .naming import format_station_display_name
 from .request import REQUEST_TIMEOUT, async_get_with_retry
@@ -96,7 +96,7 @@ async def async_load_forecast_point_list(
     _LOGGER.info("Requesting forecast point list data...")
     try:
 
-        async def _parse_csv(response) -> list[ForecastPoint]:
+        async def _parse_csv(response: ClientResponse) -> list[ForecastPoint]:
             text = await response.text(encoding=encoding)
             lines = text.splitlines()
             reader = csv.DictReader(lines, delimiter=";")

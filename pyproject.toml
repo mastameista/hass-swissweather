@@ -8,4 +8,4 @@ testpaths = ["tests"]
 [tool.mypy]
 python_version = "3.14"
 files = ["custom_components/swissweather"]
-warn_unused_ignores = true
+strict = true

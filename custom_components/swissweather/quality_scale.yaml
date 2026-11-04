@@ -123,6 +123,4 @@ rules:
   # Platinum
   async-dependency: done
   inject-websession: done
-  strict-typing:
-    status: todo
-    comment: No mypy configuration or typed-package marker yet.
+  strict-typing: done

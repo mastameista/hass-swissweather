@@ -3,8 +3,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
 import logging
+from typing import Any
 
-from aiohttp import ClientError, ClientSession
+from aiohttp import ClientError, ClientResponse, ClientSession
 
 from .meteo import (
     DEFAULT_LANGUAGE,
@@ -184,7 +185,7 @@ class PollenClient:
         logger.debug("Loading %s", url)
         try:
 
-            async def _parse_json(response):
+            async def _parse_json(response: ClientResponse) -> Any:
                 return await response.json()
 
             pollen_json = await async_get_with_retry(
@@ -247,11 +248,13 @@ class PollenClient:
                 f"Invalid MeteoSwiss pollen payload from {url}"
             ) from err
 
-    async def _async_get_csv_dictionary_for_url(self, url, encoding="utf-8"):
+    async def _async_get_csv_dictionary_for_url(
+        self, url: str, encoding: str = "utf-8"
+    ) -> list[dict[str, str]]:
         try:
             logger.debug("Requesting station data from %s...", url)
 
-            async def _parse_csv(response) -> list[dict[str, str]]:
+            async def _parse_csv(response: ClientResponse) -> list[dict[str, str]]:
                 text = await response.text(encoding=encoding)
                 return list(csv.DictReader(text.splitlines(), delimiter=";"))
 

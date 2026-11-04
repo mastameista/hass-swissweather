@@ -7,8 +7,9 @@ from enum import IntEnum
 import hashlib
 import itertools
 import logging
+from typing import Any
 
-from aiohttp import ClientError, ClientSession
+from aiohttp import ClientError, ClientResponse, ClientSession
 
 from .request import REQUEST_TIMEOUT, async_get_with_retry
 
@@ -151,7 +152,8 @@ class StationInfo:
 
 @dataclass
 class CurrentWeather:
-    station: StationInfo | None
+    # Station abbreviation from the measurement CSV, e.g. "PFA".
+    station: str | None
     date: datetime
     airTemperature: FloatValue | None
     precipitation: FloatValue | None
@@ -298,10 +300,6 @@ class WeatherForecast:
     warnings: list[Warning] | None
 
 
-def _chunked(values: list, size: int):
-    return list(itertools.zip_longest(*(iter(values),) * size, fillvalue=None))
-
-
 def _get_float_value(values: list[float | None], unit: str) -> list[FloatValue | None]:
     return [(value, unit) if value is not None else None for value in values]
 
@@ -329,7 +327,7 @@ def build_warning_fingerprint(
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()
 
 
-def _parse_warning_time(value) -> datetime | None:
+def _parse_warning_time(value: Any) -> datetime | None:
     """Convert a warning bound (epoch milliseconds) to an aware datetime.
 
     A missing bound is legitimate and returns None: drought warnings, for
@@ -407,7 +405,7 @@ class MeteoClient:
             return None
         return self._get_current_data_for_row(data)
 
-    def _get_current_data_for_row(self, csv_row) -> CurrentWeather | None:
+    def _get_current_data_for_row(self, csv_row: dict[str, str]) -> CurrentWeather | None:
         timestamp_raw = csv_row.get("Date")
         if not timestamp_raw:
             return None
@@ -437,7 +435,7 @@ class MeteoClient:
         )
 
     async def async_get_forecast(
-        self, postCode, forecastPointType: str | None = None
+        self, postCode: str, forecastPointType: str | None = None
     ) -> WeatherForecast | None:
         forecastJson = await self._async_get_forecast_json(
             postCode, self.language, forecastPointType
@@ -490,7 +488,7 @@ class MeteoClient:
             warnings,
         )
 
-    def _get_current_state(self, forecastJson) -> CurrentState | None:
+    def _get_current_state(self, forecastJson: dict[str, Any]) -> CurrentState | None:
         if "currentWeather" not in forecastJson:
             return None
         currentWeather = forecastJson.get("currentWeather", {})
@@ -522,7 +520,7 @@ class MeteoClient:
             currentCondition,
         )
 
-    def _get_daily_forecast(self, forecastJson) -> list[Forecast] | None:
+    def _get_daily_forecast(self, forecastJson: dict[str, Any]) -> list[Forecast] | None:
         forecast: list[Forecast] = []
         if "forecast" not in forecastJson or not isinstance(forecastJson["forecast"], list):
             return forecast
@@ -551,7 +549,7 @@ class MeteoClient:
             )
         return forecast
 
-    def _get_hourly_forecast(self, forecastJson) -> list[Forecast] | None:
+    def _get_hourly_forecast(self, forecastJson: dict[str, Any]) -> list[Forecast] | None:
         graphJson = forecastJson.get("graph", None)
         if graphJson is None or not isinstance(graphJson, dict):
             return None
@@ -688,7 +686,7 @@ class MeteoClient:
             )
         return forecast
 
-    def _get_weather_warnings(self, forecastJson) -> list[Warning]:
+    def _get_weather_warnings(self, forecastJson: dict[str, Any]) -> list[Warning]:
         warningsJson = forecastJson.get("warnings")
         if warningsJson is None:
             return []
@@ -754,7 +752,9 @@ class MeteoClient:
 
         return warnings
 
-    async def _async_get_current_weather_line_for_station(self, station):
+    async def _async_get_current_weather_line_for_station(
+        self, station: str | None
+    ) -> dict[str, str] | None:
         if station is None:
             return None
         data = await self._async_get_csv_dictionary_for_url(CURRENT_CONDITION_URL)
@@ -769,11 +769,13 @@ class MeteoClient:
             None,
         )
 
-    async def _async_get_csv_dictionary_for_url(self, url, encoding="utf-8"):
+    async def _async_get_csv_dictionary_for_url(
+        self, url: str, encoding: str = "utf-8"
+    ) -> list[dict[str, str]]:
         try:
             logger.debug("Requesting station data from %s...", url)
 
-            async def _parse_csv(response) -> list[dict[str, str]]:
+            async def _parse_csv(response: ClientResponse) -> list[dict[str, str]]:
                 text = await response.text(encoding=encoding)
                 return list(csv.DictReader(text.splitlines(), delimiter=";"))
 
@@ -794,7 +796,7 @@ class MeteoClient:
             ) from err
 
     def _build_forecast_query_value(
-        self, postCode, forecastPointType: str | None = None
+        self, postCode: str, forecastPointType: str | None = None
     ) -> str:
         normalized = str(postCode).strip()
         if forecastPointType == "2":
@@ -806,14 +808,14 @@ class MeteoClient:
         return normalized
 
     async def _async_get_forecast_json(
-        self, postCode, language, forecastPointType: str | None = None
-    ):
+        self, postCode: str, language: str, forecastPointType: str | None = None
+    ) -> Any:
         query_value = self._build_forecast_query_value(postCode, forecastPointType)
         url = FORECAST_URL.format(query_value)
         logger.debug("Requesting forecast data from %s...", url)
         try:
 
-            async def _parse_json(response):
+            async def _parse_json(response: ClientResponse) -> Any:
                 return await response.json()
 
             return await async_get_with_retry(

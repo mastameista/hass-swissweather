@@ -5,10 +5,11 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Awaitable, Callable
 import logging
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from aiohttp import (
     ClientConnectionError,
+    ClientResponse,
     ClientResponseError,
     ClientSession,
     ClientTimeout,
@@ -37,8 +38,8 @@ async def async_get_with_retry(
     url: str,
     *,
     logger: logging.Logger,
-    response_handler: Callable[[object], Awaitable[_T]],
-    **request_kwargs,
+    response_handler: Callable[[ClientResponse], Awaitable[_T]],
+    **request_kwargs: Any,
 ) -> _T:
     """Run a GET request and retry only on transient transport failures."""
     max_attempts = len(_RETRY_DELAYS) + 1

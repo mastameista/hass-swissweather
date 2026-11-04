@@ -15,7 +15,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import SwissWeatherDataCoordinator
+from .coordinator import SwissWeatherDataCoordinator
 from .const import CONF_FORECAST_NAME, CONF_POST_CODE, CONF_STATION_NAME
 from .entity import DEVICE_FORECAST, SwissWeatherEntity, build_device_info
 from .meteo import (

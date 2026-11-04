@@ -76,12 +76,7 @@ jobs:
         run: |
           uv pip install -r requirements_test.txt mypy==2.4.0
 
+      # Strict mode (pyproject.toml), as the Quality Scale's strict-typing rule asks.
       - name: Run mypy
         run: |
           mypy
-
-      # Platinum requires strict typing; reported until the code passes.
-      - name: Run mypy (strict, informational)
-        continue-on-error: true
-        run: |
-          mypy --strict

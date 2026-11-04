@@ -31,7 +31,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
-from . import SwissPollenDataCoordinator, SwissWeatherDataCoordinator
+from .coordinator import SwissPollenDataCoordinator, SwissWeatherDataCoordinator
 from .const import (
     CONF_FORECAST_NAME,
     CONF_POLLEN_STATION_CODE,
@@ -50,7 +50,7 @@ from .entity import (
     SwissWeatherWarningEntity,
     build_device_info,
 )
-from .meteo import CurrentWeather, Warning, WarningLevel, WarningType
+from .meteo import CurrentWeather, FloatValue, Warning, WarningLevel, WarningType
 from .pollen import CurrentPollen, PollenLevel, get_pollen_level
 
 _LOGGER = logging.getLogger(__name__)
@@ -83,7 +83,7 @@ class SwissPollenSensorEntry:
     entity_category: EntityCategory | None = None
 
 
-def first_or_none(value):
+def first_or_none(value: FloatValue | None) -> float | None:
     if value is None or len(value) < 1:
         return None
     return value[0]
@@ -471,7 +471,7 @@ class SwissWeatherWarningSlotSensor(
         return attributes
 
     @property
-    def icon(self):
+    def icon(self) -> str:
         return get_icon_for_warning(self._warning())
 
 
