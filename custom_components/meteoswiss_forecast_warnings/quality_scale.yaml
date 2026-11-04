@@ -5,8 +5,8 @@ rules:
     comment: The integration registers no service actions.
   appropriate-polling: done
   brands:
-    status: todo
-    comment: Needs an own icon; the previous one reused the MeteoSwiss app icon.
+    status: done
+    comment: Own icon in brand/; no MeteoSwiss logo or Swiss cross.
   common-modules: done
   config-flow: done
   config-flow-test-coverage: done
@@ -14,15 +14,9 @@ rules:
   docs-actions:
     status: exempt
     comment: The integration registers no service actions.
-  docs-high-level-description:
-    status: todo
-    comment: README is still upstream's; the fork README draft lives outside the repo.
-  docs-installation-instructions:
-    status: todo
-    comment: Covered by the README rewrite for the own release.
-  docs-removal-instructions:
-    status: todo
-    comment: Covered by the README rewrite for the own release.
+  docs-high-level-description: done
+  docs-installation-instructions: done
+  docs-removal-instructions: done
   entity-event-setup:
     status: exempt
     comment: Entities only follow their coordinator and subscribe to no events.
@@ -47,13 +41,9 @@ rules:
   docs-configuration-parameters:
     status: exempt
     comment: There is no options flow; settings change through reconfigure.
-  docs-installation-parameters:
-    status: todo
-    comment: Covered by the README rewrite for the own release.
+  docs-installation-parameters: done
   entity-unavailable: done
-  integration-owner:
-    status: todo
-    comment: manifest.json still names the upstream maintainer.
+  integration-owner: done
   log-when-unavailable: done
   parallel-updates: done
   reauthentication-flow:
@@ -70,29 +60,15 @@ rules:
   discovery-update-info:
     status: exempt
     comment: A cloud service; there is nothing to discover on the network.
-  docs-data-update:
-    status: todo
-    comment: Covered by the README rewrite for the own release.
-  docs-examples:
-    status: todo
-    comment: Covered by the README rewrite for the own release.
-  docs-known-limitations:
-    status: todo
-    comment: >-
-      Covered by the README rewrite; must mention the undocumented app endpoint
-      and the 8-day forecast horizon.
+  docs-data-update: done
+  docs-examples: done
+  docs-known-limitations: done
   docs-supported-devices:
     status: exempt
     comment: A cloud service without physical devices.
-  docs-supported-functions:
-    status: todo
-    comment: Covered by the README rewrite for the own release.
-  docs-troubleshooting:
-    status: todo
-    comment: Covered by the README rewrite for the own release.
-  docs-use-cases:
-    status: todo
-    comment: Covered by the README rewrite for the own release.
+  docs-supported-functions: done
+  docs-troubleshooting: done
+  docs-use-cases: done
   dynamic-devices:
     status: exempt
     comment: Devices follow the configured places, not a changing device list.
