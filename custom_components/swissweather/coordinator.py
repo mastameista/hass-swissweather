@@ -284,7 +284,9 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
             )
             if current_forecast is None:
                 raise UpdateFailed(
-                    f"No forecast data returned for forecast point {self._post_code}"
+                    translation_domain=DOMAIN,
+                    translation_key="forecast_missing",
+                    translation_placeholders={"forecast_point": self._post_code},
                 )
             _LOGGER.debug("Current forecast: %s", current_forecast)
             if current_state is None and current_forecast is not None:
@@ -311,16 +313,24 @@ class SwissWeatherDataCoordinator(DataUpdateCoordinator[WeatherData]):
             )
         except MeteoSwissConnectionError as err:
             raise UpdateFailed(
-                f"Could not reach MeteoSwiss forecast endpoint: {err}"
+                translation_domain=DOMAIN,
+                translation_key="forecast_unreachable",
+                translation_placeholders={"error": str(err)},
             ) from err
         except MeteoSwissDataError as err:
             raise UpdateFailed(
-                f"MeteoSwiss returned an invalid forecast payload: {err}"
+                translation_domain=DOMAIN,
+                translation_key="forecast_invalid",
+                translation_placeholders={"error": str(err)},
             ) from err
         except UpdateFailed:
             raise
         except Exception as err:
-            raise UpdateFailed(f"Update failed: {err}") from err
+            raise UpdateFailed(
+                translation_domain=DOMAIN,
+                translation_key="update_failed",
+                translation_placeholders={"error": str(err)},
+            ) from err
 
         return WeatherData(
             current_weather=current_state,
@@ -362,12 +372,20 @@ class SwissPollenDataCoordinator(DataUpdateCoordinator[CurrentPollen | None]):
                 _LOGGER.debug("Current pollen: %s", current_state)
             except PollenConnectionError as err:
                 raise UpdateFailed(
-                    f"Could not reach MeteoSwiss pollen endpoint: {err}"
+                    translation_domain=DOMAIN,
+                    translation_key="pollen_unreachable",
+                    translation_placeholders={"error": str(err)},
                 ) from err
             except PollenDataError as err:
                 raise UpdateFailed(
-                    f"MeteoSwiss returned an invalid pollen payload: {err}"
+                    translation_domain=DOMAIN,
+                    translation_key="pollen_invalid",
+                    translation_placeholders={"error": str(err)},
                 ) from err
             except Exception as err:
-                raise UpdateFailed(f"Update failed: {err}") from err
+                raise UpdateFailed(
+                    translation_domain=DOMAIN,
+                    translation_key="update_failed",
+                    translation_placeholders={"error": str(err)},
+                ) from err
         return current_state

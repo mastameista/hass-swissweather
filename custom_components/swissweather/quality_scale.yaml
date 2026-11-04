@@ -61,9 +61,7 @@ rules:
     status: todo
     comment: manifest.json still names the upstream maintainer.
   log-when-unavailable: done
-  parallel-updates:
-    status: todo
-    comment: Platforms do not declare PARALLEL_UPDATES.
+  parallel-updates: done
   reauthentication-flow:
     status: exempt
     comment: MeteoSwiss data needs no authentication.
@@ -117,9 +115,7 @@ rules:
     status: todo
     comment: Review which of the ~35 entities per entry should start disabled.
   entity-translations: done
-  exception-translations:
-    status: todo
-    comment: UpdateFailed and ConfigEntryNotReady messages are English literals.
+  exception-translations: done
   icon-translations:
     status: todo
     comment: Icons come from icon properties instead of icons.json.

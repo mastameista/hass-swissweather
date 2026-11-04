@@ -54,8 +54,9 @@ def test_weather_coordinator_fails_when_forecast_missing(monkeypatch):
         ),
     )
 
-    with pytest.raises(UpdateFailed, match="No forecast data returned"):
+    with pytest.raises(UpdateFailed) as excinfo:
         asyncio.run(coordinator._async_update_data())
+    assert excinfo.value.translation_key == "forecast_missing"
 
 
 def test_weather_coordinator_uses_forecast_current_as_fallback(monkeypatch):
@@ -181,8 +182,9 @@ def test_weather_coordinator_classifies_forecast_connection_errors(monkeypatch):
         FakeConfigEntry({CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"}),
     )
 
-    with pytest.raises(UpdateFailed, match="Could not reach MeteoSwiss forecast endpoint"):
+    with pytest.raises(UpdateFailed) as excinfo:
         asyncio.run(coordinator._async_update_data())
+    assert excinfo.value.translation_key == "forecast_unreachable"
 
 
 def test_pollen_coordinator_classifies_invalid_payload(monkeypatch):
@@ -206,8 +208,9 @@ def test_pollen_coordinator_classifies_invalid_payload(monkeypatch):
         FakeConfigEntry({"pollenStationCode": "BAS"}),
     )
 
-    with pytest.raises(UpdateFailed, match="invalid pollen payload"):
+    with pytest.raises(UpdateFailed) as excinfo:
         asyncio.run(coordinator._async_update_data())
+    assert excinfo.value.translation_key == "pollen_invalid"
 
 
 def test_weather_coordinator_classifies_invalid_warning_payload(monkeypatch):
@@ -234,8 +237,9 @@ def test_weather_coordinator_classifies_invalid_warning_payload(monkeypatch):
         FakeConfigEntry({CONF_POST_CODE: "6500", CONF_STATION_CODE: "BAS"}),
     )
 
-    with pytest.raises(UpdateFailed, match="invalid forecast payload"):
+    with pytest.raises(UpdateFailed) as excinfo:
         asyncio.run(coordinator._async_update_data())
+    assert excinfo.value.translation_key == "forecast_invalid"
 
 
 def test_weather_coordinator_normalizes_hass_language(monkeypatch):

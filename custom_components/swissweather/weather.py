@@ -29,6 +29,9 @@ from .meteo import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# Entities only read coordinator data; the coordinators batch all fetches.
+PARALLEL_UPDATES = 0
+
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,

@@ -189,5 +189,25 @@
       "title": "The stored pollen station for {entry_title} is no longer available",
       "description": "The saved pollen station code `{station_code}` can no longer be found in the latest MeteoSwiss pollen metadata. Reconfigure the Swiss Weather entry to pick a new pollen station or disable pollen for this entry."
     }
+  },
+  "exceptions": {
+    "forecast_missing": {
+      "message": "MeteoSwiss returned no forecast for forecast point {forecast_point}."
+    },
+    "forecast_unreachable": {
+      "message": "Could not reach the MeteoSwiss forecast service: {error}"
+    },
+    "forecast_invalid": {
+      "message": "MeteoSwiss returned an unreadable forecast: {error}"
+    },
+    "pollen_unreachable": {
+      "message": "Could not reach the MeteoSwiss pollen service: {error}"
+    },
+    "pollen_invalid": {
+      "message": "MeteoSwiss returned unreadable pollen data: {error}"
+    },
+    "update_failed": {
+      "message": "Updating MeteoSwiss data failed: {error}"
+    }
   }
 }

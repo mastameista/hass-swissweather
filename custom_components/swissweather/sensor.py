@@ -48,6 +48,9 @@ from .meteo import CurrentWeather, Warning, WarningLevel, WarningType
 from .pollen import CurrentPollen, PollenLevel, get_pollen_level
 
 _LOGGER = logging.getLogger(__name__)
+
+# Entities only read coordinator data; the coordinators batch all fetches.
+PARALLEL_UPDATES = 0
 WIND_DIRECTION_DEVICE_CLASS = getattr(SensorDeviceClass, "WIND_DIRECTION", None)
 WIND_DIRECTION_STATE_CLASS = getattr(
     SensorStateClass, "MEASUREMENT_ANGLE", SensorStateClass.MEASUREMENT

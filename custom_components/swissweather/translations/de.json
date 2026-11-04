@@ -189,5 +189,25 @@
       "title": "Die gespeicherte Pollenstation für {entry_title} ist nicht mehr verfügbar",
       "description": "Der gespeicherte Pollenstationscode `{station_code}` kann in den neuesten MeteoSwiss-Pollenmetadaten nicht mehr gefunden werden. Konfiguriere den Swiss-Weather-Eintrag neu, um eine neue Pollenstation auszuwählen, oder deaktiviere Pollen für diesen Eintrag."
     }
+  },
+  "exceptions": {
+    "forecast_missing": {
+      "message": "MeteoSchweiz lieferte keine Prognose für den Prognoseort {forecast_point}."
+    },
+    "forecast_unreachable": {
+      "message": "Der Prognosedienst von MeteoSchweiz ist nicht erreichbar: {error}"
+    },
+    "forecast_invalid": {
+      "message": "MeteoSchweiz lieferte eine unlesbare Prognose: {error}"
+    },
+    "pollen_unreachable": {
+      "message": "Der Pollendienst von MeteoSchweiz ist nicht erreichbar: {error}"
+    },
+    "pollen_invalid": {
+      "message": "MeteoSchweiz lieferte unlesbare Pollendaten: {error}"
+    },
+    "update_failed": {
+      "message": "Die Aktualisierung der MeteoSchweiz-Daten ist fehlgeschlagen: {error}"
+    }
   }
 }

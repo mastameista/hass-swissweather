@@ -11,6 +11,11 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import SwissWeatherDataCoordinator
 from .coordinator import WarningAvailabilityMixin
 from .const import CONF_FORECAST_NAME, CONF_POST_CODE, CONF_WARNINGS_ENABLED, DOMAIN
+
+# Entities only read coordinator data; the coordinators batch all fetches.
+PARALLEL_UPDATES = 0
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
